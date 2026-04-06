@@ -5,6 +5,7 @@ import { locationService } from "../../utils/locationService";
 import { adminApi } from "../../api/adminApi";
 import { formatTo12Hour, formatTotalHours } from "../../utils/formatTime";
 import { BASE_URL } from "../../config/api";
+import { authenticatedFetch } from "../../utils/auth";
 import "./EmployeeLocationHistory.css";
 
 const EmployeeLocationHistory = () => {
@@ -27,16 +28,8 @@ const EmployeeLocationHistory = () => {
 
   const fetchEmployeeData = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${BASE_URL}/api/v1/admin/users/employees/${employeeId}`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        }
-      });
-
+      const res = await authenticatedFetch(`${BASE_URL}/api/v1/admin/users/employees/${employeeId}`);
       if (!res.ok) throw new Error("Failed to fetch employee data");
-      
       const data = await res.json();
       setEmployee(data);
     } catch (err) {

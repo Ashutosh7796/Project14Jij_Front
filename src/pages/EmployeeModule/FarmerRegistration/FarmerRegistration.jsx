@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import "./FarmerRegistration.css";
 import { useEffect } from "react";
 import { BASE_URL } from "../../../config/api";
+import { getToken, clearAuthData } from "../../../utils/auth";
 
 /* ── inline toast ─────────────────────────────────────────── */
 const Toast = ({ toast, onClose }) => {
@@ -147,9 +148,7 @@ useEffect(() => {
   /* ===================== EFFECTS ===================== */
 
   useEffect(() => {
-    const token =
-      localStorage.getItem("authToken") || localStorage.getItem("token");
-
+    const token = getToken();
     if (!token) {
       console.warn("No auth token found");
     }
@@ -530,8 +529,7 @@ useEffect(() => {
         err.message.includes("login again")
       ) {
         showToast(err.message + " Redirecting to login…");
-        localStorage.removeItem("token");
-        localStorage.removeItem("role");
+        clearAuthData();
         setTimeout(() => { window.location.href = "/"; }, 2000);
       } else {
         showToast(err.message);
@@ -544,13 +542,11 @@ useEffect(() => {
   /* ===================== TOKEN VALIDATION ===================== */
 
   const getValidToken = () => {
-    const token =
-      localStorage.getItem("authToken") || localStorage.getItem("token");
-
+    // Use centralized auth utility — single source of truth ("token" key only)
+    const token = getToken();
     if (!token) {
       throw new Error("Please login again. No authentication token found.");
     }
-
     return token;
   };
 

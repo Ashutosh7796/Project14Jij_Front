@@ -17,6 +17,7 @@ import LabReports from '../pages/lab-reports/LabReports';
 import AttendanceManagement from '../pages/employees/AttendanceManagement';
 import EmployeeLocationHistory from '../pages/employees/EmployeeLocationHistory';
 import LeaveManagement from '../pages/employees/LeaveManagement';
+import FarmerRegistrationList from '../pages/employees/FarmerRegistrationList';
 
 const ALLOWED_ROLES = ['ADMIN', 'ROLE_ADMIN'];
 
@@ -57,7 +58,8 @@ const AdminRoutes = () => {
         <Route path="products" element={<ProductList />} />
         <Route path="products/add" element={<AddEditProduct />} />
         <Route path="products/edit/:id" element={<AddEditProduct />} />
-        <Route path="lab-reports" element={<LabReports />} />
+        <Route path="lab-reports"                  element={<LabReports />} />
+        <Route path="farmer-registration-list"      element={<FarmerRegistrationList />} />
         <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
       </Route>
     </Routes>

@@ -4,6 +4,7 @@ import { ArrowLeft, Loader2, CheckCircle, XCircle, Clock, Calendar } from 'lucid
 import Toast from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { BASE_URL } from '../../config/api';
+import { authenticatedFetch } from '../../utils/auth';
 import './MyLeaves.css';
 
 const MyLeaves = () => {
@@ -34,13 +35,7 @@ const MyLeaves = () => {
     setError('');
     
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${BASE_URL}/api/v1/attendance/leave/my-requests`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const res = await authenticatedFetch(`${BASE_URL}/api/v1/attendance/leave/my-requests`);
 
       if (!res.ok) {
         if (res.status === 404) {
@@ -93,7 +88,6 @@ const MyLeaves = () => {
         return;
       }
 
-      const token = localStorage.getItem('token');
       const payload = {
         userId,
         startDate: leaveData.startDate,
@@ -103,12 +97,8 @@ const MyLeaves = () => {
         status: 'PENDING'
       };
 
-      const res = await fetch(`${BASE_URL}/api/v1/attendance/leave/request`, {
+      const res = await authenticatedFetch(`${BASE_URL}/api/v1/attendance/leave/request`, {
         method: "POST",
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify(payload),
       });
 

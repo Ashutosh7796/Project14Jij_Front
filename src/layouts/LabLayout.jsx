@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
+import { clearAuthData } from "../utils/auth";
 import {
   LayoutDashboard,
   History,
@@ -35,10 +36,7 @@ const LabLayout = () => {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("userId");
-    localStorage.removeItem("userEmail");
+    clearAuthData();
     navigate("/");
   };
 

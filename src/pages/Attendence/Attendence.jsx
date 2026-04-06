@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2, AlertCircle, MapPin } from "lucide-react";
 import { locationService } from "../../utils/locationService";
 import { BASE_URL } from "../../config/api";
+import { authenticatedFetch, clearAuthData } from "../../utils/auth";
 import "./Attendence.css";
 
 export default function ViewAttendance() {
@@ -26,22 +27,14 @@ export default function ViewAttendance() {
       setLoading(true);
       setError(null);
       try {
-        const token = localStorage.getItem("token");
-        const headers = {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        };
-
         // 1. Fetch Monthly Summary (Table)
-        const summaryRes = await fetch(
-          `${BASE_URL}/api/v1/attendance/me/monthly-summary?month=${selectedMonth}&year=${selectedYear}`,
-          { method: "GET", headers }
+        const summaryRes = await authenticatedFetch(
+          `${BASE_URL}/api/v1/attendance/me/monthly-summary?month=${selectedMonth}&year=${selectedYear}`
         );
 
         // 2. Fetch Monthly Report (Cards)
-        const reportRes = await fetch(
-          `${BASE_URL}/api/v1/attendance/me/monthly-report?month=${selectedMonth}&year=${selectedYear}`,
-          { method: "GET", headers }
+        const reportRes = await authenticatedFetch(
+          `${BASE_URL}/api/v1/attendance/me/monthly-report?month=${selectedMonth}&year=${selectedYear}`
         );
 
         // --- HANDLE 404 SPECIFICALLY FOR THE REPORT ---
@@ -66,8 +59,8 @@ export default function ViewAttendance() {
           setEmployee(finalSummaryData);
           setAttendance(finalSummaryData.records || []);
         } else if (summaryRes.status === 401) {
-          localStorage.removeItem("token");
-          navigate("/login");
+          clearAuthData();
+          navigate("/auth-login");
           return;
         } else {
           throw new Error("Failed to fetch records");

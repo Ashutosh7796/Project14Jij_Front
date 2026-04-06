@@ -14,7 +14,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Bell,
-  Calendar
+  Calendar,
+  ClipboardList
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -29,12 +30,13 @@ const AdminLayout = () => {
   };
 
   const menuItems = [
-    { path: '/admin/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-    { path: '/admin/employees', label: 'Employee management', icon: <Users size={20} /> },
-    { path: '/admin/products', label: 'Product & category', icon: <Package size={20} /> },
-    { path: '/admin/orders', label: 'Order tracking', icon: <ShoppingCart size={20} /> },
-    { path: '/admin/farmers', label: 'Farmer Registration', icon: <MessageSquare size={20} /> },
-    { path: '/admin/lab-reports', label: 'Lab Test Report', icon: <FileText size={20} /> },
+    { path: '/admin/dashboard',               label: 'Dashboard',                icon: <LayoutDashboard size={20} /> },
+    { path: '/admin/employees',               label: 'Employee management',       icon: <Users size={20} /> },
+    { path: '/admin/products',                label: 'Product & category',        icon: <Package size={20} /> },
+    { path: '/admin/orders',                  label: 'Order tracking',            icon: <ShoppingCart size={20} /> },
+    { path: '/admin/farmers',                 label: 'Farmer Registration',       icon: <MessageSquare size={20} /> },
+    { path: '/admin/farmer-registration-list', label: 'Farmer Reg. List',         icon: <ClipboardList size={20} /> },
+    { path: '/admin/lab-reports',             label: 'Lab Test Report',           icon: <FileText size={20} /> },
   ];
 
   const currentPage = menuItems.find(item => item.path === location.pathname)?.label || 'Dashboard';

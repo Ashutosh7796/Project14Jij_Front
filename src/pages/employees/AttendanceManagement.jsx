@@ -4,6 +4,7 @@ import { Loader2, Calendar, Users } from "lucide-react";
 import Toast from "../../components/Toast";
 import { useToast } from "../../hooks/useToast";
 import { BASE_URL } from "../../config/api";
+import { authenticatedFetch, clearAuthData } from "../../utils/auth";
 import "./AttendanceManagement.css";
 
 const AttendanceManagement = () => {
@@ -24,14 +25,9 @@ const AttendanceManagement = () => {
     setError(null);
 
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${BASE_URL}/api/v1/employees/getUsers`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const res = await authenticatedFetch(`${BASE_URL}/api/v1/employees/getUsers`);
 
+      if (res.status === 401) { clearAuthData(); navigate("/auth-login"); return; }
       if (!res.ok) throw new Error("Failed to fetch employees");
       
       const response = await res.json();
