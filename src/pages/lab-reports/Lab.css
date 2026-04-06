@@ -1,0 +1,654 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+/* ================= RESET & ROOT ================= */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  font-family: 'Inter', sans-serif;
+}
+
+/* ================= PAGE CONTAINER ================= */
+.labreports-container {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  padding: 20px 40px;
+  background: #fff;
+  overflow-x: hidden;
+  transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+/* ================= HEADER ================= */
+.labreports-header {
+  margin-bottom: 20px;
+}
+
+.labreports-title {
+  color: #20b15a;
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.labreports-subtitle {
+  color: #666;
+  font-size: 14px;
+}
+
+/* ================= FILTERS ================= */
+.labreports-filters {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 40px;
+  padding: 15px 20px;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  align-items: center;
+  background: #fafafa;
+}
+
+.labreports-search-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  max-width: 400px;
+  padding: 10px 15px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.labreports-search-input {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 14px;
+  background: transparent;
+}
+
+.labreports-search-icon {
+  color: #999;
+}
+
+.labreports-clear-btn {
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background: #fff;
+  font-size: 14px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.labreports-clear-btn:hover {
+  background: #f8f8f8;
+  border-color: #20b15a;
+}
+
+/* ================= TABLE ================= */
+.labreports-table-container {
+  position: relative;
+  margin: 10px 0 20px;
+  border: 1px solid #e8e8e8;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile scroll hint */
+.labreports-table-container::after {
+  content: '← Scroll →';
+  position: absolute;
+  bottom: 12px;
+  right: 20px;
+  font-size: 11px;
+  color: #999;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 4px 10px;
+  border-radius: 12px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.labreports-table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+}
+
+.labreports-table-head th {
+  background: #97e899;
+  padding: 16px 24px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  text-transform: uppercase;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.labreports-table-body td {
+  padding: 18px 24px;
+  font-size: 14px;
+  color: #444;
+  border-bottom: 1px solid #f5f5f5;
+  white-space: nowrap;
+}
+
+.labreports-table-body tr:hover {
+  background: #fafafa;
+}
+
+/* Column specific widths for better mobile viewing */
+.labreports-table-head th:nth-child(1), 
+.labreports-table-body td:nth-child(1) { /* Form Number */
+  min-width: 140px;
+}
+
+.labreports-table-head th:nth-child(2), 
+.labreports-table-body td:nth-child(2) { /* Farmer Name */
+  min-width: 130px;
+}
+
+.labreports-table-head th:nth-child(3), 
+.labreports-table-body td:nth-child(3) { /* Mobile */
+  min-width: 120px;
+}
+
+.labreports-table-head th:nth-child(4), 
+.labreports-table-body td:nth-child(4) { /* Land Area */
+  min-width: 100px;
+}
+
+.labreports-table-head th:nth-child(5), 
+.labreports-table-body td:nth-child(5) { /* Address */
+  min-width: 180px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.labreports-table-head th:nth-child(6), 
+.labreports-table-body td:nth-child(6) { /* Form Status */
+  min-width: 110px;
+}
+
+.labreports-table-head th:nth-child(7), 
+.labreports-table-body td:nth-child(7) { /* Action */
+  min-width: 80px;
+  text-align: center;
+}
+
+/* ================= STATUS ================= */
+.labreports-status {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-block;
+}
+
+.labreports-status.complete {
+  color: #2ecc71;
+  background: #e8f8ed;
+}
+
+.labreports-status.draft {
+  color: #f39c12;
+  background: #fef5e7;
+}
+
+.labreports-status.pending {
+  color: #3498db;
+  background: #ebf5fb;
+}
+
+/* ================= ACTION MENU ================= */
+.labreports-action-cell {
+  position: relative;
+  text-align: center;
+}
+
+.labreports-dots-trigger {
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.labreports-dots-trigger:hover {
+  background: #f0f0f0;
+}
+
+.labreports-action-menu {
+  position: absolute;
+  top: 28px;
+  right: 0; 
+  min-width: 160px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #eee;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  z-index: 1000;
+}
+
+.labreports-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.labreports-menu-item:hover {
+  background: #f8f8f8;
+}
+
+.labreports-menu-icon {
+  color: #5a166c;
+}
+
+.labreports-menu-divider {
+  padding: 8px 16px;
+  font-size: 12px;
+  color: #999;
+  border-top: 1px solid #eee;
+}
+
+/* ================= PAGINATION ================= */
+.labreports-pagination-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 20px 0;
+  border-top: 1px solid #f0f0f0;
+}
+
+.labreports-pagination {
+  display: flex;
+  gap: 8px;
+}
+
+.labreports-page-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.labreports-page-btn.active {
+  background: #20b15a;
+  color: #fff;
+  border-color: #20b15a;
+}
+
+.labreports-page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ================= LOADING ================= */
+.labreports-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+}
+
+.labreports-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #20b15a;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ================= INFO FOOTER ================= */
+.labreports-info-footer {
+  text-align: right;
+  padding: 15px 0;
+  font-size: 13px;
+  color: #666;
+}
+
+/* ================= SCROLLBAR ================= */
+.labreports-table-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.labreports-table-container::-webkit-scrollbar-thumb {
+  background: #20b15a;
+  border-radius: 10px;
+}
+
+.labreports-table-container::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 10px;
+}
+
+/* ================= SIDEBAR AWARE ================= */
+body.sidebar-open .labreports-container {
+  margin-left: 260px;
+  width: calc(100% - 260px);
+}
+
+body.sidebar-closed .labreports-container {
+  margin-left: 80px;
+  width: calc(100% - 80px);
+}
+
+/* ================= RESPONSIVE ================= */
+
+/* Tablet (768px - 1024px) */
+@media (max-width: 1024px) {
+  .labreports-container {
+    padding: 20px 30px;
+  }
+  
+  .labreports-table {
+    min-width: 950px;
+  }
+  
+  .labreports-table-head th,
+  .labreports-table-body td {
+    padding: 16px 20px;
+  }
+  
+  .labreports-filters {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  
+  .labreports-search-wrapper {
+    max-width: 100%;
+    flex: 1 1 30px;
+  }
+}
+
+/* Mobile (576px - 768px) */
+@media (max-width: 768px) {
+  /* .labreports-container {
+    padding: 15px 20px;
+  } */
+  .labreports-action-menu {
+    position: fixed !important;   /* 🔥 KEY FIX */
+    top: auto;
+    bottom: 20px;                 /* stays visible */
+    left: 50%;
+    transform: translateX(-50%);
+    right: auto;
+
+    width: calc(100% - 162px);
+    /* max-width: 100px; */
+
+    border-radius: 12px;
+    z-index: 9999;
+  }
+  body.sidebar-open .labreports-container,
+  body.sidebar-closed .labreports-container {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .labreports-header {
+    text-align: center;
+  }
+
+  .labreports-title {
+    font-size: 20px;
+  }
+
+  .labreports-subtitle {
+    font-size: 13px;
+  }
+
+  .labreports-filters {
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .labreports-search-wrapper {
+    max-width: 100%;
+    width: 100%;
+    padding: 8px 12px;
+  }
+  
+  .labreports-search-input {
+    font-size: 13px;
+  }
+
+  .labreports-clear-btn {
+    width: 100%;
+    padding: 10px;
+  }
+
+  .labreports-table {
+    min-width: 1000px;
+  }
+  
+  .labreports-table-head th,
+  .labreports-table-body td {
+    padding: 14px 16px;
+    font-size: 13px;
+  }
+  
+  /* Adjust column widths for mobile */
+  .labreports-table-head th:nth-child(1), 
+  .labreports-table-body td:nth-child(1) { /* Form Number */
+    min-width: 120px;
+  }
+  
+  .labreports-table-head th:nth-child(2), 
+  .labreports-table-body td:nth-child(2) { /* Farmer Name */
+    min-width: 110px;
+  }
+  
+  .labreports-table-head th:nth-child(3), 
+  .labreports-table-body td:nth-child(3) { /* Mobile */
+    min-width: 100px;
+  }
+  
+  .labreports-table-head th:nth-child(4), 
+  .labreports-table-body td:nth-child(4) { /* Land Area */
+    min-width: 90px;
+  }
+  
+  .labreports-table-head th:nth-child(5), 
+  .labreports-table-body td:nth-child(5) { /* Address */
+    min-width: 150px;
+    font-size: 12.5px;
+  }
+  
+  .labreports-table-head th:nth-child(6), 
+  .labreports-table-body td:nth-child(6) { /* Form Status */
+    min-width: 100px;
+  }
+  
+  .labreports-table-head th:nth-child(7), 
+  .labreports-table-body td:nth-child(7) { /* Action */
+    min-width: 70px;
+  }
+
+  .labreports-status {
+    padding: 3px 10px;
+    font-size: 12px;
+  }
+
+  .labreports-table-container::after {
+    opacity: 1;
+    animation: fadeInOut 3s ease-in-out;
+  }
+  
+  @keyframes fadeInOut {
+    0%, 100% { opacity: 0; }
+    10%, 90% { opacity: 1; }
+  }
+
+  .labreports-pagination-footer {
+    justify-content: center;
+  }
+  
+  .labreports-pagination {
+    gap: 5px;
+  }
+  
+  .labreports-page-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+    min-width: 44px;
+  }
+  
+  .labreports-info-footer {
+    text-align: center;
+    font-size: 12px;
+  }
+  
+  /* .labreports-action-menu {
+    right: 80px;
+  } */
+   /* .labreports-action-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 9998;
+} */
+
+}
+
+/* Small Mobile (below 576px) */
+@media (max-width: 576px) {
+  .labreports-container {
+    padding: 12px 15px;
+  }
+
+  .labreports-title {
+    font-size: 18px;
+  }
+  
+  .labreports-subtitle {
+    font-size: 12px;
+  }
+
+  .labreports-table {
+    min-width: 950px;
+  }
+  
+  .labreports-table-head th,
+  .labreports-table-body td {
+    padding: 12px 14px;
+    font-size: 12.5px;
+  }
+  
+  .labreports-table-head th:nth-child(1), 
+  .labreports-table-body td:nth-child(1) { /* Form Number */
+    min-width: 110px;
+  }
+  
+  .labreports-table-head th:nth-child(2), 
+  .labreports-table-body td:nth-child(2) { /* Farmer Name */
+    min-width: 100px;
+  }
+  
+  .labreports-table-head th:nth-child(3), 
+  .labreports-table-body td:nth-child(3) { /* Mobile */
+    min-width: 90px;
+  }
+  
+  .labreports-table-head th:nth-child(4), 
+  .labreports-table-body td:nth-child(4) { /* Land Area */
+    min-width: 80px;
+  }
+  
+  .labreports-table-head th:nth-child(5), 
+  .labreports-table-body td:nth-child(5) { /* Address */
+    min-width: 130px;
+    font-size: 12px;
+  }
+  
+  .labreports-table-head th:nth-child(6), 
+  .labreports-table-body td:nth-child(6) { /* Form Status */
+    min-width: 90px;
+  }
+  
+  .labreports-table-head th:nth-child(7), 
+  .labreports-table-body td:nth-child(7) { /* Action */
+    min-width: 60px;
+  }
+
+  .labreports-status {
+    font-size: 11px;
+    padding: 2px 8px;
+  }
+  
+  .labreports-pagination {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .labreports-page-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+    min-width: 40px;
+  }
+  
+  .labreports-dots-trigger {
+    padding: 6px;
+  }
+  
+  .labreports-dots-trigger svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .labreports-menu-item,
+  .labreports-dots-trigger,
+  .labreports-page-btn {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .labreports-dots-trigger {
+    padding: 12px;
+  }
+}
+
+/* Large Desktop (above 1440px) */
+@media (min-width: 1440px) {
+  .labreports-container {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+}

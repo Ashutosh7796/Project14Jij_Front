@@ -1,0 +1,86 @@
+/* src/components/AnimatedMeshGradient.css */
+.mesh-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #3b0764; /* Deep purple base */
+  z-index: 0;
+}
+
+.mesh-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.8;
+  animation: float-blob 25s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.mesh-blob-1 {
+  top: -10%;
+  left: -10%;
+  width: 70%;
+  height: 70%;
+  background: #166534; /* Deep forest green */
+  animation-delay: 0s;
+}
+
+.mesh-blob-2 {
+  bottom: -20%;
+  right: -10%;
+  width: 60%;
+  height: 60%;
+  background: #8b5cf6; /* Vibrant violet */
+  animation-delay: -5s;
+  animation-duration: 20s;
+}
+
+.mesh-blob-3 {
+  top: 30%;
+  left: 40%;
+  width: 65%;
+  height: 65%;
+  background: #22c55e; /* Vibrant brand green */
+  animation-delay: -10s;
+  animation-duration: 30s;
+  mix-blend-mode: hard-light;
+}
+
+.mesh-blob-4 {
+  top: 10%;
+  right: 20%;
+  width: 50%;
+  height: 50%;
+  background: #f59e0b; /* Amber accent */
+  animation-delay: -15s;
+  animation-duration: 22s;
+  mix-blend-mode: soft-light;
+}
+
+.mesh-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, transparent 0%, rgba(10, 5, 20, 0.4) 100%);
+  z-index: 1;
+}
+
+@keyframes float-blob {
+  0% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+  }
+  33% {
+    transform: translate(15%, 10%) scale(1.15) rotate(10deg);
+  }
+  66% {
+    transform: translate(-10%, 20%) scale(0.9) rotate(-5deg);
+  }
+  100% {
+    transform: translate(-5%, -5%) scale(1.05) rotate(5deg);
+  }
+}

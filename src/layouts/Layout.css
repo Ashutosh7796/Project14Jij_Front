@@ -1,0 +1,778 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700\&display=swap");
+
+/* ROOT CONTAINER */
+
+.emp-layout-wrapper {
+
+  display: flex;
+
+  min-height: 100vh;
+
+  background-color: #fcfcfc;
+
+  font-family: "Inter", sans-serif;
+
+  position: relative;
+
+  width: 100%;
+
+}
+
+/* ===================== SIDEBAR ===================== */
+
+.emp-sidebar {
+
+  background-color: #3b1141;
+
+  color: white;
+
+  display: flex;
+
+  flex-direction: column;
+
+  height: 100vh;
+
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  border-radius: 0 24px 24px 0;
+
+  padding: 20px 0;
+
+  flex-shrink: 0;
+
+  position: fixed;
+
+  left: 0;
+
+  top: 0;
+
+  z-index: 100;
+
+}
+
+/* SIDEBAR WIDTH STATES */
+
+.emp-sidebar-open {
+
+  width: 260px;
+
+}
+
+.emp-sidebar-closed {
+
+  width: 100px;
+
+  align-items: center;
+
+}
+
+/* TOGGLE BUTTON */
+
+.emp-toggle-btn {
+
+  position: absolute;
+
+  right: -12px;
+
+  top: 40px;
+
+  width: 24px;
+
+  height: 24px;
+
+  background: white;
+
+  border: 1px solid #ddd;
+
+  border-radius: 50%;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  cursor: pointer;
+
+  color: #3b1141;
+
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  transition: transform 0.2s;
+
+  z-index: 10;
+
+}
+
+.emp-toggle-btn:hover {
+
+  transform: scale(1.1);
+
+}
+
+/* HEADER */
+
+.emp-sidebar-header {
+
+  padding: 0 20px;
+
+  margin-bottom: 30px;
+
+  text-align: center;
+
+  border-bottom: none;
+
+  min-height: auto;
+
+}
+
+/* BRAND */
+
+.emp-logo-container {
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  gap: 12px;
+
+}
+
+.emp-logo {
+
+  width: 65px;
+
+  height: 65px;
+
+  background: white;
+
+  border-radius: 50%;
+
+  padding: 5px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  overflow: hidden;
+
+  object-fit: contain;
+
+}
+
+.emp-logo-text {
+
+  font-weight: 700;
+
+  font-size: 14px;
+
+  letter-spacing: 0.8px;
+
+  color: white;
+
+  white-space: nowrap;
+
+}
+
+.emp-sidebar-closed .emp-logo-text {
+
+  display: none;
+
+}
+
+/* NAVIGATION */
+
+.emp-sidebar-nav {
+
+  flex: 1;
+
+  padding: 0 12px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 8px;
+
+  overflow-y: auto;
+
+}
+
+/* Scrollbar styling */
+
+.emp-sidebar-nav::-webkit-scrollbar {
+
+  width: 4px;
+
+}
+
+.emp-sidebar-nav::-webkit-scrollbar-track {
+
+  background: rgba(255, 255, 255, 0.05);
+
+  border-radius: 4px;
+
+}
+
+.emp-sidebar-nav::-webkit-scrollbar-thumb {
+
+  background: rgba(255, 255, 255, 0.2);
+
+  border-radius: 4px;
+
+}
+
+.emp-nav-item {
+
+  display: flex;
+
+  align-items: center;
+
+  padding: 12px 16px;
+
+  text-decoration: none;
+
+  color: rgba(255, 255, 255, 0.8);
+
+  border-radius: 12px;
+
+  transition: all 0.2s;
+
+  font-size: 13px;
+
+  white-space: nowrap;
+
+}
+
+.emp-nav-item:hover {
+
+  background: rgba(255, 255, 255, 0.08);
+
+  color: white;
+
+}
+
+.emp-nav-active {
+
+  background-color: #28a745 !important;
+
+  color: white !important;
+
+  font-weight: 500;
+
+}
+
+.emp-nav-item svg,
+
+.emp-nav-item i {
+
+  width: 20px;
+
+  height: 20px;
+
+  flex-shrink: 0;
+
+  margin-right: 12px;
+
+  font-size: 18px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+}
+
+.emp-sidebar-closed .emp-nav-item {
+
+  justify-content: center;
+
+  padding: 12px;
+
+}
+
+.emp-sidebar-closed .emp-nav-item span {
+
+  display: none;
+
+}
+
+.emp-sidebar-closed .emp-nav-item svg,
+
+.emp-sidebar-closed .emp-nav-item i {
+
+  margin-right: 0;
+
+}
+
+/* SIDEBAR FOOTER */
+
+.emp-sidebar-footer {
+
+  padding: 0 12px;
+
+  margin-top: 20px;
+
+  border-top: none;
+
+}
+
+/* LOGOUT */
+
+.emp-logout-btn {
+
+  width: 100%;
+
+  padding: 12px 16px;
+
+  background-color: #28a745;
+
+  border: none;
+
+  border-radius: 12px;
+
+  color: white;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  cursor: pointer;
+
+  transition: all 0.2s;
+
+  font-size: 14px;
+
+  font-weight: 500;
+
+  gap: 12px;
+
+}
+
+.emp-logout-btn:hover {
+
+  background-color: #218838;
+
+}
+
+.emp-logout-btn svg,
+
+.emp-logout-btn i {
+
+  width: 20px;
+
+  height: 20px;
+
+  font-size: 18px;
+
+}
+
+.emp-sidebar-closed .emp-logout-btn span {
+
+  display: none;
+
+}
+
+.emp-sidebar-closed .emp-logout-btn {
+
+  padding: 12px;
+
+}
+
+/* ===================== MAIN CONTENT ===================== */
+
+.emp-main-content {
+
+  background: #fcfcfc;
+
+  display: flex;
+
+  flex-direction: column;
+
+  min-height: 100vh;
+
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  flex: 1;
+
+}
+
+.emp-content-open {
+
+  margin-left: 260px;
+
+}
+
+.emp-content-closed {
+
+  margin-left: 85px;
+
+}
+
+/* TOP HEADER */
+
+.emp-top-header {
+
+  height: 70px;
+
+  background: white;
+
+  padding: 0 40px;
+
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: center;
+
+  border-bottom: 1px solid #f0f0f0;
+
+  width: 100%;
+
+  flex-shrink: 0;
+
+}
+
+.emp-header-left {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 1rem;
+
+}
+
+.emp-header-left h1 {
+
+  color: #3b1141;
+
+  font-size: 24px;
+
+  font-weight: 600;
+
+  margin: 0;
+
+}
+
+.emp-header-right {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 20px;
+
+}
+
+/* USER MENU */
+
+.emp-user-menu {
+
+  position: relative;
+
+}
+
+.emp-user-btn {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 8px 12px;
+
+  background: #f8f9fa;
+
+  border: 1px solid #eee;
+
+  border-radius: 8px;
+
+  cursor: pointer;
+
+  transition: all 0.2s;
+
+}
+
+.emp-user-btn:hover {
+
+  background: #e9ecef;
+
+}
+
+.emp-user-btn span {
+
+  font-size: 14px;
+
+  font-weight: 500;
+
+  color: #2d3748;
+
+}
+
+.emp-dropdown-menu {
+
+  position: absolute;
+
+  top: calc(100% + 0.5rem);
+
+  right: 0;
+
+  background: white;
+
+  border: 1px solid #e2e8f0;
+
+  border-radius: 8px;
+
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+
+  min-width: 200px;
+
+  overflow: hidden;
+
+  z-index: 1000;
+
+}
+
+.emp-dropdown-item {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 0.75rem;
+
+  padding: 0.75rem 1rem;
+
+  color: #4a5568;
+
+  text-decoration: none;
+
+  background: none;
+
+  border: none;
+
+  width: 100%;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition: background 0.2s;
+
+  font-size: 14px;
+
+}
+
+.emp-dropdown-item:hover {
+
+  background: #f7fafc;
+
+}
+
+.emp-dropdown-logout {
+
+  color: #e53e3e !important;
+
+  border-top: 1px solid #e2e8f0;
+
+}
+
+.emp-dropdown-logout:hover {
+
+  background: #fff5f5 !important;
+
+}
+
+/* PAGE CONTENT */
+
+.emp-page-content {
+
+  padding: 20px 40px;
+
+  overflow-y: auto;
+
+  flex: 1;
+
+  background-color: #fcfcfc;
+
+  width: 100%;
+
+}
+
+/* MOBILE MENU BUTTON */
+
+.emp-mobile-menu-btn {
+
+  display: none;
+
+  background: transparent;
+
+  border: none;
+
+  color: #3b1141;
+
+  cursor: pointer;
+
+  padding: 8px;
+
+  border-radius: 8px;
+
+  transition: background 0.2s;
+
+}
+
+.emp-mobile-menu-btn:hover {
+
+  background: #f8f9fa;
+
+}
+
+/* RESPONSIVE STYLES */
+
+@media (max-width: 1024px) {
+
+  .emp-top-header {
+
+  padding: 0 24px;
+
+  }
+
+  .emp-page-content {
+
+  padding: 16px 24px;
+
+  }
+
+}
+
+@media (max-width: 768px) {
+
+  .emp-sidebar {
+
+  position: fixed;
+
+  left: 0;
+
+  top: 0;
+
+  z-index: 1000;
+
+  border-radius: 0;
+
+  transform: translateX(-100%);
+
+  }
+
+  .emp-sidebar-open {
+
+  transform: translateX(0);
+
+  }
+
+  .emp-content-open,
+
+  .emp-content-closed {
+
+  margin-left: 0 !important;
+
+  }
+
+  .emp-mobile-menu-btn {
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  }
+
+  .emp-top-header {
+
+  padding: 0 16px;
+
+  height: 60px;
+
+  }
+
+  .emp-header-left h1 {
+
+  font-size: 20px;
+
+  }
+
+  .emp-page-content {
+
+  padding: 16px;
+
+  }
+
+  .emp-user-btn span {
+
+  display: none;
+
+  }
+
+}
+
+@media (max-width: 480px) {
+
+  .emp-top-header {
+
+  padding: 0 37px;
+
+  }
+
+  .emp-header-left h1 {
+
+  font-size: 18px;
+
+  }
+
+  .emp-page-content {
+
+  padding: 12px;
+
+  }
+
+  .emp-header-right {
+
+  gap: 12px;
+
+  }
+
+  .emp-logo-text {
+
+  font-size: 12px;
+
+  }
+
+}
+
+@media (max-width: 360px) {
+
+  .emp-header-left h1 {
+
+  font-size: 15px;
+
+  white-space: nowrap;
+
+  }
+
+  .emp-top-header {
+
+  height: 56px;
+
+  }
+
+}
+
