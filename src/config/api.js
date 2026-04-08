@@ -2,8 +2,20 @@ import { getErrorMessage } from '../utils/errorHandler';
 import { checkRateLimit } from '../utils/rateLimiter';
 import { getAuthHeaders } from '../utils/auth';
 
-// Use environment variable or fallback to localhost
-export const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+function resolveBaseUrl() {
+  const env = import.meta.env.VITE_API_BASE_URL?.trim();
+  if (import.meta.env.PROD) {
+    if (!env) {
+      throw new Error(
+        'Missing VITE_API_BASE_URL. Set it in .env before production build.'
+      );
+    }
+    return env.replace(/\/$/, '');
+  }
+  return env || 'http://localhost:8080';
+}
+
+export const BASE_URL = resolveBaseUrl();
 
 // Re-export so existing callers of `import { getAuthHeaders } from '../config/api'` keep working
 export { getAuthHeaders };

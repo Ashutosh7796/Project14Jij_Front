@@ -1,26 +1,22 @@
-import { BASE_URL } from "../config/api";
-import { clearAuthData } from "../utils/auth";
+import { BASE_URL, enhancedFetch } from "../config/api";
+import { clearAuthData, getToken } from "../utils/auth";
 
 export const authApi = {
 
   /* ===================== LOGIN ===================== */
   login: async (credentials) => {
-    const response = await fetch(`${BASE_URL}/jwt/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: credentials.email,
-        password: credentials.password,
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || "Login failed");
-    }
-
-    // Return raw response — authService.login() is the single owner
-    // of post-login localStorage writes (token, role, user data).
+    const response = await enhancedFetch(
+      `${BASE_URL}/jwt/login`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: credentials.email,
+          password: credentials.password,
+        }),
+      },
+      { skipAuth: true, rateLimitType: "login" }
+    );
     return response.json();
   },
 
@@ -35,23 +31,21 @@ export const authApi = {
       role:         "USER",
     };
 
-    const response = await fetch(`${BASE_URL}/api/v1/auth/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || "Registration failed");
-    }
-
+    const response = await enhancedFetch(
+      `${BASE_URL}/api/v1/auth/register`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+      { skipAuth: true, rateLimitType: "login" }
+    );
     return response.json();
   },
 
   /* ===================== LOGOUT ===================== */
   logout: async () => {
-    const token = localStorage.getItem("token");
+    const token = getToken();
 
     // ── Clear local state FIRST, before any network call ──────────────────
     // This ensures that even if the backend logout call is slow or fires

@@ -395,7 +395,6 @@ const FarmerRegistrationList = () => {
                   <th>Name</th>
                   <th>Email</th>
                   <th>Mobile</th>
-                  <th>Role</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -405,10 +404,9 @@ const FarmerRegistrationList = () => {
                   <tr key={emp.userId ?? idx}>
                     <td>{empPage * EMP_PAGE_SIZE + idx + 1}</td>
                     <td><span className="frl-code-chip">{emp.employeeCode || `U-${emp.userId}`}</span></td>
-                    <td className="frl-name-cell">{emp.name || emp.fullName || "—"}</td>
+                    <td className="frl-name-cell">{emp.name || emp.fullName || emp.firstName ? `${emp.firstName || ""} ${emp.lastName || ""}`.trim() : "—"}</td>
                     <td>{emp.email || "—"}</td>
-                    <td>{emp.mobile || "—"}</td>
-                    <td>{emp.role?.replace("ROLE_", "") || "—"}</td>
+                    <td>{emp.mobile || emp.mobileNumber || "—"}</td>
                     <td><StatusBadge locked={emp.accountLocked} /></td>
                     <td>
                       <button

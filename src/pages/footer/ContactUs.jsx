@@ -8,9 +8,24 @@ import { IoCallSharp } from "react-icons/io5";
 import { MdAttachEmail } from "react-icons/md";
 import { FaLocationDot } from "react-icons/fa6";
 import { useToast } from "../../hooks/useToast";
- 
-// ✅ Update path as per your project structure
+import { sanitizeString } from "../../utils/sanitize";
 import jiojiLogo from "../../assets/Jioji_logo.png";
+
+/** Prefer VITE_EMAILJS_* in .env; dev-only fallbacks keep local runs working without env. */
+const EMAILJS = {
+  serviceId:
+    import.meta.env.VITE_EMAILJS_SERVICE_ID?.trim() ||
+    (import.meta.env.DEV ? "service_qrxnupf" : ""),
+  templateId:
+    import.meta.env.VITE_EMAILJS_TEMPLATE_ID?.trim() ||
+    (import.meta.env.DEV ? "template_cbf8uz5" : ""),
+  publicKey:
+    import.meta.env.VITE_EMAILJS_PUBLIC_KEY?.trim() ||
+    (import.meta.env.DEV ? "YDkdpHom_T2MuTgKA" : ""),
+  toEmail:
+    import.meta.env.VITE_EMAILJS_TO_EMAIL?.trim() ||
+    (import.meta.env.DEV ? "abhishekwadile04@gmail.com" : ""),
+};
  
 const INITIAL_FORM = {
   name: "",
@@ -26,42 +41,9 @@ export default function ContactUs() {
     if ("scrollRestoration" in window.history) {
       window.history.scrollRestoration = "manual";
     }
- 
-    const scrollToTopEverywhere = () => {
-      // ✅ Window scroll
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
- 
-      // ✅ Also scroll all containers which have scrollbar
-      const allElements = document.querySelectorAll("*");
-      allElements.forEach((el) => {
-        const style = window.getComputedStyle(el);
-        const overflowY = style.overflowY;
- 
-        if (
-          (overflowY === "auto" || overflowY === "scroll") &&
-          el.scrollHeight > el.clientHeight
-        ) {
-          el.scrollTop = 0;
-        }
-      });
-    };
- 
-    // ✅ run immediately
-    scrollToTopEverywhere();
- 
-    // ✅ run again after render (best fix for react-router layouts)
-    requestAnimationFrame(() => {
-      scrollToTopEverywhere();
-    });
- 
-    // ✅ run again after small delay (some layouts render late)
-    const timer = setTimeout(() => {
-      scrollToTopEverywhere();
-    }, 50);
- 
-    return () => clearTimeout(timer);
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   }, []);
  
   const [form, setForm] = useState(INITIAL_FORM);
@@ -175,22 +157,22 @@ export default function ContactUs() {
     setErrors(nextErrors);
  
     if (Object.keys(nextErrors).length > 0) return;
- 
+
+    if (!EMAILJS.serviceId || !EMAILJS.templateId || !EMAILJS.publicKey) {
+      showToast("Contact form is not configured. Please try again later.", "error");
+      return;
+    }
+
     const templateParams = {
-      name: form.name,
-      contactnumber: form.contactnumber,
-      address: form.address,
-      message: form.message || "No message provided",
-      to_email: "abhishekwadile04@gmail.com",
+      name: sanitizeString(form.name),
+      contactnumber: sanitizeString(form.contactnumber),
+      address: sanitizeString(form.address),
+      message: sanitizeString(form.message || "No message provided"),
+      to_email: EMAILJS.toEmail || "noreply@example.com",
     };
- 
+
     emailjs
-      .send(
-        "service_qrxnupf", // SERVICE ID
-        "template_cbf8uz5", // TEMPLATE ID
-        templateParams,
-        "YDkdpHom_T2MuTgKA" //PUBLIC ID
-      )
+      .send(EMAILJS.serviceId, EMAILJS.templateId, templateParams, EMAILJS.publicKey)
       .then(
         () => {
           showToast("Message sent successfully!", "success");
@@ -204,7 +186,7 @@ export default function ContactUs() {
           });
         },
         (error) => {
-          console.error("Email error:", error);
+          if (import.meta.env.DEV) console.error("Email error:", error);
           showToast("Failed to send message. Please try again.", "error");
         }
       );

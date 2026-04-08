@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import AuthErrorBoundary from './components/AuthErrorBoundary';
+import ProtectedRoute from './components/ProtectedRoute';
 
 import Login from './pages/auth/Login';          // Landing Page
 import Register from './pages/auth/Register';
@@ -46,7 +47,14 @@ function App() {
         <Route path="/lab-login" element={<LabLogin />} />
 
         {/* Dashboards */}
-        <Route path="/dashboard" element={<UserDashboard />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute role="USER">
+              <UserDashboard />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Role Based */}
         <Route path="/admin/*" element={<AdminRoutes />} />

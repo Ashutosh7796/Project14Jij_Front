@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import ProtectedRoute from '../components/ProtectedRoute';
 import AdminLayout from '../layouts/AdminLayout';
 import Dashboard from '../pages/dashboard/Dashboard';
 import EmployeeList from '../pages/employees/EmployeeList';
@@ -19,26 +19,8 @@ import EmployeeLocationHistory from '../pages/employees/EmployeeLocationHistory'
 import LeaveManagement from '../pages/employees/LeaveManagement';
 import FarmerRegistrationList from '../pages/employees/FarmerRegistrationList';
 
-const ALLOWED_ROLES = ['ADMIN', 'ROLE_ADMIN'];
-
-const AdminRoutes = () => {
-  const { isAuthenticated, loading, user } = useAuth();
-
-  if (loading) {
-    return <div className="loading"><div className="spinner"></div></div>;
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/" replace />;
-  }
-
-  // Role guard — only ADMIN may access this module
-  const role = (user?.role || localStorage.getItem('role') || '').toUpperCase();
-  if (!ALLOWED_ROLES.includes(role)) {
-    return <Navigate to="/" replace />;
-  }
-
-  return (
+const AdminRoutes = () => (
+  <ProtectedRoute role="ADMIN">
     <Routes>
       <Route element={<AdminLayout />}>
         <Route path="dashboard" element={<Dashboard />} />
@@ -63,7 +45,7 @@ const AdminRoutes = () => {
         <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
       </Route>
     </Routes>
-  );
-};
+  </ProtectedRoute>
+);
 
 export default AdminRoutes;

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Search, MoreVertical, Eye, Download, Upload } from "lucide-react";
 import { BASE_URL } from "../../config/api";
+import { getToken } from "../../utils/auth";
 import { useAuth } from "../../context/AuthContext";
 import "./Lab.css";
 import { useToast } from "../../hooks/useToast";
@@ -39,7 +40,7 @@ const LabReportsContent = () => {
     setLoading(true);
     setReports([]);
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) { setLoading(false); return; }
 
       const res = await fetch(`${BASE_URL}/api/v1/lab_report/view/${surveyId}`, {
@@ -97,7 +98,7 @@ const LabReportsContent = () => {
   const handleView = async (surveyId) => {
     setOpenMenuId(null);
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const res = await fetch(
         `${BASE_URL}/api/v1/lab_report/download/${surveyId}`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -115,7 +116,7 @@ const LabReportsContent = () => {
   const handleDownload = async (surveyId) => {
     setOpenMenuId(null);
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const res = await fetch(
         `${BASE_URL}/api/v1/lab_report/download/${surveyId}`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -145,7 +146,7 @@ const LabReportsContent = () => {
       const file = e.target.files[0];
       if (!file) return;
 
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const formData = new FormData();
       formData.append("file", file);
 

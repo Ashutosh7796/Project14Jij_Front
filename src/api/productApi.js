@@ -1,4 +1,5 @@
 import { BASE_URL, getAuthHeaders } from "../config/api";
+import { getToken } from "../utils/auth";
 
 /**
  * ImageType enum — must match com.spring.jwt.Enums.ImageType exactly.
@@ -94,7 +95,7 @@ export const productApi = {
     fd.append("photo",     photoFile);
 
     // Read token once and attach manually — avoids any header-spread issues
-    const token = localStorage.getItem("token");
+    const token = getToken();
     const res = await fetch(`${BASE_URL}/api/v1/product-photo/upload`, {
       method: "POST",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -167,7 +168,7 @@ export const productApi = {
     fd.append("photoType", photoType);
 
     // Read token once and attach manually — avoids any header-spread issues
-    const token = localStorage.getItem("token");
+    const token = getToken();
     const res = await fetch(`${BASE_URL}/api/v1/product-photo/product/${productId}`, {
       method: "PATCH",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -191,7 +192,7 @@ export const productApi = {
     const fd = new FormData();
     fd.append("image", photoFile);
 
-    const token = localStorage.getItem("token");
+    const token = getToken();
     const res = await fetch(`${BASE_URL}/api/v1/product-photo/${imageId}`, {
       method: "PATCH",
       headers: token ? { Authorization: `Bearer ${token}` } : {},

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import logo from '../../assets/Jioji_logo.png';
 import { authApi } from '../../api/authApi';
 import { useToast } from '../../hooks/useToast';
+import { sanitizeString, sanitizeEmail, sanitizePhone } from '../../utils/sanitize';
 import '../auth/Login.css';
 
 const Register = () => {
@@ -23,8 +24,13 @@ const Register = () => {
     }
     setLoading(true);
     try {
-      const { confirmPassword, ...registerData } = formData;
-      await authApi.register(registerData);
+      const { name, email, phone, password } = formData;
+      await authApi.register({
+        name: sanitizeString(name),
+        email: sanitizeEmail(email),
+        phone: sanitizePhone(phone),
+        password,
+      });
       showToast('Registration successful! Please login.', 'success');
       navigate('/login');
     } catch (err) {

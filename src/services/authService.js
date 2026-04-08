@@ -39,6 +39,12 @@ export const authService = {
       if (response.userId) setUserId(response.userId);
       if (credentials.email) setUserEmail(credentials.email);
       setUserData(userData);
+
+      // CRITICAL: Verify token was actually stored
+      const storedToken = getToken();
+      if (!storedToken || storedToken !== response.accessToken) {
+        throw new Error('Failed to store authentication token');
+      }
     }
 
     return response;

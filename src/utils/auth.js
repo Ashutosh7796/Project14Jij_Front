@@ -1,3 +1,5 @@
+import { checkRateLimit } from "./rateLimiter";
+
 /**
  * ============================================================
  *  CENTRALIZED AUTH UTILITY — Single Source of Truth
@@ -25,6 +27,9 @@ const EMPLOYEE_NAME_KEY = "employeeName";
 // clearAuthData() removes it even if some old code wrote to it.
 const LEGACY_AUTH_TOKEN_KEY = "authToken";
 
+/** Max JWT string length (header+payload+sig). Proxies often allow 8–16KB Authorization headers. */
+const MAX_JWT_LENGTH = 16384;
+
 // ─── All auth-related keys (for full cleanup) ───────────────
 const ALL_AUTH_KEYS = [
   TOKEN_KEY,
@@ -40,16 +45,113 @@ const ALL_AUTH_KEYS = [
 
 // ─── Token ──────────────────────────────────────────────────
 
+/**
+ * Normalize a raw access token from the API or localStorage.
+ * Fixes: accidental "Bearer " stored inside the token, wrapping quotes,
+ * newlines (break headers), and stray whitespace — all of which can
+ * yield "Malformed JWT" on the server while other users still work.
+ */
+export function normalizeAccessToken(raw) {
+  if (raw == null || raw === "") return "";
+  let t = String(raw).trim();
+  // Strip wrapping quotes if the API double-encoded the string
+  if (
+    (t.startsWith('"') && t.endsWith('"')) ||
+    (t.startsWith("'") && t.endsWith("'"))
+  ) {
+    t = t.slice(1, -1).trim();
+  }
+  // Some APIs return "Bearer eyJ..." as the accessToken field — strip every prefix
+  while (/^Bearer\s+/i.test(t)) {
+    t = t.replace(/^Bearer\s+/i, "").trim();
+  }
+  // Header-breaking characters
+  t = t.replace(/[\r\n\t]+/g, "");
+  return t;
+}
+
+/**
+ * Decode JWT payload (middle segment) as UTF-8 JSON — required for claims with non-ASCII text.
+ * Returns null if the token is not a valid JWT or payload is not valid JSON.
+ */
+export function decodeJwtPayload(token) {
+  if (!token || typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  try {
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const pad = "=".repeat((4 - (base64.length % 4)) % 4);
+    const binary = atob(base64 + pad);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+function assertJwtUsable(normalized) {
+  if (!normalized) return "empty";
+  if (normalized.length > MAX_JWT_LENGTH) return "too_long";
+  const parts = normalized.split(".");
+  if (parts.length !== 3) return "bad_shape";
+  const payload = decodeJwtPayload(normalized);
+  if (!payload || typeof payload !== "object") return "bad_payload_json";
+  return null;
+}
+
 /** Save the JWT access token */
 export function setToken(token) {
   if (token) {
-    localStorage.setItem(TOKEN_KEY, token);
+    const normalized = normalizeAccessToken(token);
+    const err = assertJwtUsable(normalized);
+    if (err) {
+      if (import.meta.env.DEV) {
+        console.error("❌ ATTEMPTING TO STORE INVALID TOKEN!", err);
+        console.error("   Length:", normalized?.length, "Preview:", String(token).substring(0, 120));
+      }
+      throw new Error(
+        err === "too_long"
+          ? "JWT token too large"
+          : "Invalid JWT token format — please login again"
+      );
+    }
+
+    console.log(
+      "✅ Storing valid token:",
+      normalized.substring(0, 50) + "...",
+      "Length:",
+      normalized.length
+    );
+    localStorage.setItem(TOKEN_KEY, normalized);
   }
 }
 
 /** Read the current JWT access token (may be null) */
 export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
+  const raw = localStorage.getItem(TOKEN_KEY);
+  if (!raw) return null;
+
+  const normalized = normalizeAccessToken(raw);
+  const err = assertJwtUsable(normalized);
+
+  if (err) {
+    if (import.meta.env.DEV) {
+      console.error("❌ INVALID OR CORRUPTED TOKEN IN LOCALSTORAGE!", err);
+      console.error("   Preview:", raw.substring(0, 120));
+    }
+    localStorage.removeItem(TOKEN_KEY);
+    return null;
+  }
+
+  // Self-heal: persist normalized form if storage had Bearer prefix / quotes / newlines
+  if (normalized !== raw) {
+    localStorage.setItem(TOKEN_KEY, normalized);
+  }
+
+  return normalized;
 }
 
 /** Check whether a token exists in storage */
@@ -168,11 +270,31 @@ export function getAuthHeaders(isFormData = false) {
  *
  * Session expiry is detected at the AuthContext level (bootstrap
  * check on mount, token-expiry validation).
+ *
+ * @param {object} [fetchMeta] — optional: { skipRateLimit?: boolean, rateLimitType?: string }
  */
-export async function authenticatedFetch(url, options = {}) {
+export async function authenticatedFetch(url, options = {}, fetchMeta = {}) {
+  const { skipRateLimit = false, rateLimitType = "api" } = fetchMeta;
+  if (!skipRateLimit) {
+    const rateCheck = checkRateLimit(url, rateLimitType);
+    if (!rateCheck.allowed) {
+      const err = new Error(rateCheck.message);
+      err.userMessage = rateCheck.message;
+      throw err;
+    }
+  }
+
   const method = (options.method || 'GET').toUpperCase();
   const isGET = method === 'GET';
   const { _isFormData, ...restOptions } = options;
+
+  // CRITICAL: Get fresh token for EVERY request
+  const token = getToken();
+  if (!token) {
+    const error = new Error('No authentication token found');
+    error.status = 401;
+    throw error;
+  }
 
   if (isGET) {
     let res;

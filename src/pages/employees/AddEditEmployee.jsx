@@ -119,6 +119,21 @@ const AddEditEmployee = () => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     clearFieldError(name);
+
+    // Live 10-digit validation for mobile fields
+    if (name === 'mobileNumber') {
+      const digits = value.replace(/\D/g, '');
+      if (value && digits.length !== 10) {
+        setFieldErrors(prev => ({ ...prev, mobileNumber: 'Phone number must be exactly 10 digits' }));
+      }
+    }
+    if (name === 'altMobileNumber' && value) {
+      const digits = value.replace(/\D/g, '');
+      if (digits.length !== 10) {
+        setFieldErrors(prev => ({ ...prev, altMobileNumber: 'Emergency mobile number must be exactly 10 digits' }));
+      }
+    }
+
     // Live confirm password check
     if (name === 'confirmPassword' || name === 'password') {
       const pw = name === 'password' ? value : formData.password;
@@ -157,6 +172,24 @@ const AddEditEmployee = () => {
       ['password', 'Password'], ['confirmPassword', 'Confirm Password'],
     ];
     if (!validateRequired(requiredFields)) return;
+
+    // Mobile number: exactly 10 digits
+    const mobileStr = String(formData.mobileNumber).replace(/\D/g, '');
+    if (mobileStr.length !== 10) {
+      setFieldError('mobileNumber', 'Phone number must be exactly 10 digits');
+      showNotif('Phone number must be exactly 10 digits', 'error');
+      return;
+    }
+
+    // Alternate mobile: 10 digits if provided
+    if (formData.altMobileNumber) {
+      const altStr = String(formData.altMobileNumber).replace(/\D/g, '');
+      if (altStr.length !== 10) {
+        setFieldError('altMobileNumber', 'Emergency mobile number must be exactly 10 digits');
+        showNotif('Emergency mobile number must be exactly 10 digits', 'error');
+        return;
+      }
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setFieldError('confirmPassword', 'Passwords do not match');
@@ -404,7 +437,7 @@ const AddEditEmployee = () => {
 
             <div className="grid-2">
               {field('email', 'Email ID', true, { type: 'email', placeholder: 'Email' })}
-              {field('mobileNumber', 'Phone Number', true, { type: 'tel', placeholder: 'XXXX XXXXX' })}
+              {field('mobileNumber', 'Phone Number', true, { type: 'tel', placeholder: '10-digit mobile number', maxLength: 10, inputMode: 'numeric', pattern: '[0-9]*' })}
             </div>
 
             <div className="grid-2">
@@ -431,7 +464,7 @@ const AddEditEmployee = () => {
 
             <div className="grid-2">
               {field('permanentAddress', 'Permanent Address', true, { placeholder: 'Permanent Address' })}
-              {field('altMobileNumber', 'Emergency Mobile Number', false, { type: 'tel', placeholder: 'Emergency Mobile Number' })}
+              {field('altMobileNumber', 'Emergency Mobile Number', false, { type: 'tel', placeholder: '10-digit emergency mobile', maxLength: 10, inputMode: 'numeric', pattern: '[0-9]*' })}
             </div>
 
             <div className="grid-2">

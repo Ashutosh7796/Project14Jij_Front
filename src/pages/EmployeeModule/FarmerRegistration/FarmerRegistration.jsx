@@ -542,7 +542,6 @@ useEffect(() => {
   /* ===================== TOKEN VALIDATION ===================== */
 
   const getValidToken = () => {
-    // Use centralized auth utility — single source of truth ("token" key only)
     const token = getToken();
     if (!token) {
       throw new Error("Please login again. No authentication token found.");

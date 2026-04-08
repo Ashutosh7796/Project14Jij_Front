@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import ProtectedRoute from '../components/ProtectedRoute';
 import EmployeeLayout from '../layouts/EmployeeLayout';
 import EmployeeDashboard from '../pages/dashboard/EmployeeDashboard';
 import FarmerRegistration from '../pages/EmployeeModule/FarmerRegistration/FarmerRegistration';
@@ -9,26 +9,8 @@ import PreviousHistory from '../pages/EmployeeModule/PreviousHistoryFarmers/Prev
 import UpdateFarmer from '../pages/EmployeeModule/UpdateFarmer/UpdateFarmer';
 import MyLeaves from '../pages/employees/MyLeaves';
 
-const ALLOWED_ROLES = ['EMPLOYEE', 'SURVEYOR', 'ROLE_EMPLOYEE', 'ROLE_SURVEYOR'];
-
-const EmployeeRoutes = () => {
-  const { isAuthenticated, loading, user } = useAuth();
-
-  if (loading) {
-    return <div className="loading"><div className="spinner"></div></div>;
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/" replace />;
-  }
-
-  // Role guard — only EMPLOYEE / SURVEYOR may access this module
-  const role = (user?.role || localStorage.getItem('role') || '').toUpperCase();
-  if (!ALLOWED_ROLES.includes(role)) {
-    return <Navigate to="/" replace />;
-  }
-
-  return (
+const EmployeeRoutes = () => (
+  <ProtectedRoute role="EMPLOYEE">
     <Routes>
       <Route element={<EmployeeLayout />}>
         <Route path="dashboard"           element={<EmployeeDashboard />} />
@@ -42,7 +24,7 @@ const EmployeeRoutes = () => {
         <Route path="*" element={<Navigate to="/employee/dashboard" replace />} />
       </Route>
     </Routes>
-  );
-};
+  </ProtectedRoute>
+);
 
 export default EmployeeRoutes;

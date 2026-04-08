@@ -51,41 +51,9 @@ export default function Blog() {
       window.history.scrollRestoration = "manual";
     }
  
-    const scrollToTopEverywhere = () => {
-      // ✅ Window scroll
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
- 
-      // ✅ Also scroll all containers which have scrollbar
-      const allElements = document.querySelectorAll("*");
-      allElements.forEach((el) => {
-        const style = window.getComputedStyle(el);
-        const overflowY = style.overflowY;
- 
-        if (
-          (overflowY === "auto" || overflowY === "scroll") &&
-          el.scrollHeight > el.clientHeight
-        ) {
-          el.scrollTop = 0;
-        }
-      });
-    };
- 
-    // ✅ run immediately
-    scrollToTopEverywhere();
- 
-    // ✅ run again after render (best fix for react-router layouts)
-    requestAnimationFrame(() => {
-      scrollToTopEverywhere();
-    });
- 
-    // ✅ run again after small delay (some layouts render late)
-    const timer = setTimeout(() => {
-      scrollToTopEverywhere();
-    }, 50);
- 
-    return () => clearTimeout(timer);
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   }, []);
  
   const styles = useMemo(

@@ -1,24 +1,13 @@
 import { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { authService } from '../services/authService';
-import { clearAuthData, getToken, getUserData } from '../utils/auth';
+import { clearAuthData, getToken, getUserData, decodeJwtPayload } from '../utils/auth';
 
 const AuthContext = createContext(null);
 
 /* ── helpers ─────────────────────────────────────────────── */
 
-function decodeToken(token) {
-  try {
-    const base64Url = token.split('.')[1];
-    if (!base64Url) return null;
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(window.atob(base64));
-  } catch {
-    return null;
-  }
-}
-
 function isTokenExpired(token) {
-  const payload = decodeToken(token);
+  const payload = decodeJwtPayload(token);
   if (!payload?.exp) return true;
   return Date.now() / 1000 > payload.exp - 10; // 10s clock-skew buffer
 }
@@ -115,6 +104,10 @@ export const AuthProvider = ({ children }) => {
       const response = await authService.login(credentials, type);
       const userData = authService.getUser();
 
+      // CRITICAL: Wait a moment for backend ActiveSessionService to register the new token
+      // This prevents race conditions where API calls fire before the session is registered
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       // If authService stored user data, wait for React to commit
       // the new state before returning so navigate() fires AFTER
       // isAuthenticated flips to true.
@@ -136,6 +129,9 @@ export const AuthProvider = ({ children }) => {
         });
       }
 
+      if (import.meta.env.DEV) {
+        console.log('✅ Login complete, user state set, token ready');
+      }
       return response;
     } catch (error) {
       setAuthError(error.userMessage || error.message);

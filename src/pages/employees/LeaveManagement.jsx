@@ -4,6 +4,7 @@ import { ArrowLeft, Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
 import Toast from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { BASE_URL } from '../../config/api';
+import { getToken } from '../../utils/auth';
 import './LeaveManagement.css';
 
 const LeaveManagement = () => {
@@ -26,7 +27,7 @@ const LeaveManagement = () => {
     setError('');
     
     try {
-      const token = localStorage.getItem('token');
+      const token = getToken();
       const res = await fetch(`${BASE_URL}/api/v1/attendance/leave/requests`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -73,7 +74,7 @@ const LeaveManagement = () => {
     setProcessingId(leaveId);
     
     try {
-      const token = localStorage.getItem('token');
+      const token = getToken();
       const res = await fetch(`${BASE_URL}/api/v1/attendance/leave/approve/${leaveId}`, {
         method: 'PUT',
         headers: {
@@ -105,7 +106,7 @@ const LeaveManagement = () => {
     setProcessingId(leaveId);
     
     try {
-      const token = localStorage.getItem('token');
+      const token = getToken();
       const reasonParam = encodeURIComponent(reason || 'No reason provided');
       const res = await fetch(`${BASE_URL}/api/v1/attendance/leave/reject/${leaveId}?reason=${reasonParam}`, {
         method: 'PUT',

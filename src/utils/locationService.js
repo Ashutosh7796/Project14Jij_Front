@@ -64,7 +64,7 @@ export const locationService = {
    */
   getAddressFromCoords: async (latitude, longitude) => {
     try {
-      // Using OpenStreetMap Nominatim API (free, no API key required)
+      // Nominatim: respect https://operations.osmfoundation.org/policies/nominatim/ (usage limits; consider a backend proxy in production).
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
         {

@@ -4,7 +4,7 @@ import SurveyDetailView from "../HistoryOverview/HistoryOverview";
 import FarmerRegistration from "../FarmerRegistration/FarmerRegistration";
 import { useToast } from "../../../hooks/useToast";
 import { BASE_URL } from "../../../config/api";
-import { authenticatedFetch } from "../../../utils/auth";
+import { authenticatedFetch, getToken } from "../../../utils/auth";
  
 const PreviousHistory = () => {
   const { showToast, ToastComponent } = useToast();
@@ -41,7 +41,7 @@ const PreviousHistory = () => {
  
   // Check authentication on mount
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getToken();
     const userRole = localStorage.getItem("role");
  
     if (!token) {

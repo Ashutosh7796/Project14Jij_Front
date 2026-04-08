@@ -1,14 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Search, MoreVertical, Eye, Pencil, Trash2 } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 import { BASE_URL } from "../../config/api";
+import { authenticatedFetch, getToken, clearAuthData } from "../../utils/auth";
 import "./Farmers.css";
-
-const getToken = () => localStorage.getItem("token");
 
 const FarmerList = () => {
   const { showToast, ToastComponent } = useToast();
+  const navigate = useNavigate();
   const [surveys, setSurveys] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -35,17 +35,32 @@ const FarmerList = () => {
 
   /* ================= FETCH DATA ================= */
   const fetchEmployeeFarmerSurveys = async () => {
+    const token = getToken();
+    if (!token) {
+      showToast("Session expired. Please log in again.", "error");
+      clearAuthData();
+      navigate("/auth-login");
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await fetch(
-        `${BASE_URL}/api/v1/employeeFarmerSurveys?page=${page}&size=${size}`,
-        {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-            "Content-Type": "application/json",
-          },
-        }
+      const res = await authenticatedFetch(
+        `${BASE_URL}/api/v1/employeeFarmerSurveys?page=${page}&size=${size}`
       );
+
+      if (res.status === 401) {
+        showToast("Your session has expired. Please log in again.", "error");
+        clearAuthData();
+        navigate("/auth-login");
+        return;
+      }
+
+      if (res.status === 403) {
+        showToast("You don't have permission to view this page.", "error");
+        setLoading(false);
+        return;
+      }
 
       const json = await res.json();
       if (!res.ok) {
@@ -55,7 +70,7 @@ const FarmerList = () => {
       setSurveys(json.data?.content || []);
       setTotalPages(json.data?.totalPages || 1);
     } catch (err) {
-      showToast(err.message, 'error');
+      showToast(err.message || "Failed to load farmer data. Please try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -90,15 +105,20 @@ const FarmerList = () => {
     }
 
     try {
-      const res = await fetch(`${BASE_URL}/api/v1/employeeFarmerSurveys/${surveyId}`, {
+      const res = await authenticatedFetch(`${BASE_URL}/api/v1/employeeFarmerSurveys/${surveyId}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
       });
 
+      if (res.status === 401) {
+        showToast("Session expired. Please log in again.", "error");
+        clearAuthData();
+        navigate("/auth-login");
+        return;
+      }
+
       if (!res.ok) {
-        throw new Error("Failed to delete");
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.message || "Failed to delete farmer");
       }
 
       showToast("Farmer deleted successfully", "success");

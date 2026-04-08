@@ -4,9 +4,8 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { useToast } from "../../hooks/useToast";
 import { BASE_URL } from "../../config/api";
+import { getToken } from "../../utils/auth";
 import "./FarmersDetails.css";
-
-const getToken = () => localStorage.getItem("token");
 
 const FarmerDetail = () => {
   const { id } = useParams();
