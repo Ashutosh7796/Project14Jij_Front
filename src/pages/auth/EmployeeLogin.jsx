@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import logo from '../../assets/Jioji_logo.png';
-import '../auth/Login.css';
+import './authPortal.css';
 import { useAuth } from '../../context/AuthContext';
 
 const EmployeeLoginNew = () => {
@@ -27,14 +27,12 @@ const EmployeeLoginNew = () => {
         throw new Error('Please fill in all fields');
       }
 
-      // useAuth().login() sets isAuthenticated=true before navigate fires
       await login(
         { email: formData.email, password: formData.password },
         'employee'
       );
 
       navigate('/employee/dashboard', { replace: true });
-
     } catch (err) {
       setError(err.message || 'Login failed');
     } finally {
@@ -43,40 +41,26 @@ const EmployeeLoginNew = () => {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <div className="auth-logo">
-          <img src={logo} alt="Logo" />
-          <h2>Employee Login</h2>
-          <p>Welcome back! Please login to your account</p>
+    <div className="auth-portal-root">
+      <div className="auth-portal-card">
+        <div className="auth-portal-brand">
+          <img src={logo} alt="Jioji Green India" />
         </div>
+        <h1 className="auth-portal-title">Employee portal</h1>
+        <p className="auth-portal-sub">Sign in with your work email to access surveys, attendance, and field tools.</p>
 
-        {error && (
-          <div
-            className="error-message"
-            style={{
-              backgroundColor: '#fee2e2',
-              color: '#991b1b',
-              padding: '12px',
-              borderRadius: '8px',
-              marginBottom: '20px',
-              border: '1px solid #fecaca'
-            }}
-          >
-            {error}
-          </div>
-        )}
+        {error ? <div className="auth-portal-error">{error}</div> : null}
 
-        <form onSubmit={handleSubmit} noValidate>
+        <form className="auth-portal-form" onSubmit={handleSubmit} noValidate>
           <div className="form-group">
-            <label htmlFor="email">Email Address</label>
+            <label htmlFor="email">Email</label>
             <input
               id="email"
               type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder="Enter your email"
+              placeholder="you@company.com"
               required
               autoComplete="email"
               disabled={loading}
@@ -91,36 +75,27 @@ const EmployeeLoginNew = () => {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              placeholder="Enter your password"
+              placeholder="••••••••"
               required
               autoComplete="current-password"
               disabled={loading}
             />
           </div>
 
-          <button
-            type="submit"
-            className="btn-primary"
-            disabled={loading}
-            style={{
-              opacity: loading ? 0.6 : 1,
-              cursor: loading ? 'not-allowed' : 'pointer'
-            }}
-          >
-            {loading ? 'Logging in...' : 'Login'}
+          <button type="submit" className="auth-portal-submit" disabled={loading}>
+            {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
 
-        <div className="auth-link">
-          <Link to="/forgot-password">Forgot Password?</Link>
+        <div className="auth-portal-links">
+          <Link to="/forgot-password">Forgot password?</Link>
         </div>
 
-        <div className="auth-footer">
+        <div className="auth-portal-footer">
           <p>
-            Not an employee?{' '}
-            <Link to="/login">User Login</Link>
-            {' '}or{' '}
-            <Link to="/login"> Login</Link>
+            Not staff? <Link to="/">Customer home</Link>
+            {' · '}
+            <Link to="/auth-login">Customer login</Link>
           </p>
         </div>
       </div>

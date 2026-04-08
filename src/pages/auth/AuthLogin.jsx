@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import "./authLogin.css";
 import jioji from "../../assets/Jioji_logo.png";
 import { FaUserAlt } from "react-icons/fa";
@@ -66,13 +66,18 @@ export default function AuthLogin() {
 
   return (
     <div className="authBg">
+      <div className="authBgOrbs" aria-hidden />
       <MatrixBackground />
-      <div className="authCard glassCard">
+      <Link to="/" className="authBackHome">
+        ← Back to home
+      </Link>
+      <div className="authCard glassCard authCardGlow">
         <div className="authBrand">
           <img className="authLogo" src={jioji} alt="Jioji Green India" />
         </div>
 
-        <h1 className="authHeading">Login</h1>
+        <h1 className="authHeading">Welcome back</h1>
+        <p className="authSubheading">Sign in to shop seeds, track orders, and manage your farm account.</p>
 
         {apiError && <div className="authError">{apiError}</div>}
 
@@ -129,11 +134,15 @@ export default function AuthLogin() {
           </div>
 
           <button className="authBtn" type="submit" disabled={loading}>
-            {loading ? "Signing in…" : "Sign In"}
+            {loading ? "Signing in…" : "Sign in"}
           </button>
 
+          <p className="authAltAccount">
+            New here? <Link to="/register">Create an account</Link>
+          </p>
+
           <div className="authTiny">
-            By clicking login you agree to the T&amp;C and Privacy Policy
+            By signing in you agree to our T&amp;C and Privacy Policy
           </div>
         </form>
       </div>

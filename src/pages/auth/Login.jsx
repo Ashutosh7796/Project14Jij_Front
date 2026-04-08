@@ -23,6 +23,10 @@ import { GrLogin } from "react-icons/gr";
 import { FaShoppingCart } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
 
+function scrollToSection(id) {
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 /* ── role → dashboard path (must match App.jsx routes) ── */
 function getDashboardPath(role = "") {
   const r = String(role).toUpperCase().replace(/^ROLE_/, "");
@@ -260,9 +264,6 @@ export default function Login() {
   const userIdErr = touched.userId && !userId.trim();
   const passErr = touched.password && !password.trim();
 
-  const handleCategoryClick = (categoryTitle) => {
-  };
-
   return (
     <div className="page homepage-redesign">
       {/* HERO */}
@@ -274,7 +275,10 @@ export default function Login() {
             <img className="logoImg" src={jioji} alt="Jioji Green India" />
           </div>
 
-          <div className="loginWrap">
+          <div className="loginWrap heroNavActions">
+            <button className="heroNavGhost hover-lift" type="button" onClick={() => navigate("/register")}>
+              Create account
+            </button>
             <button className="loginBtn glow-btn hover-lift" type="button" onClick={() => navigate("/auth-login")}>
               <GrLogin /> Login
             </button>
@@ -308,8 +312,12 @@ export default function Login() {
             </p>
 
             <div className="heroCtas">
-              <button className="hero-btn-primary hover-lift">Shop Now</button>
-              <button className="hero-btn-secondary hover-lift">Browse Categories</button>
+              <button type="button" className="hero-btn-primary hover-lift" onClick={() => scrollToSection("shop-featured")}>
+                Shop now
+              </button>
+              <button type="button" className="hero-btn-secondary hover-lift" onClick={() => scrollToSection("shop-categories")}>
+                Browse categories
+              </button>
             </div>
           </div>
 
@@ -388,11 +396,12 @@ export default function Login() {
       ) : null}
 
       {/* FULL-WIDTH CONTENT */}
-      <section className="contentFull">
+      <section className="contentFull contentFull--elevated">
         <div className="container">
-          <div className="sectionHead center">
-            <h2 className="h2">Shop by Category</h2>
-            <p className="muted">Find everything you need for your farm in one place</p>
+          <div className="sectionHead center" id="shop-categories">
+            <span className="sectionKicker sectionKicker--dark">Categories</span>
+            <h2 className="h2 h2--display">Shop by category</h2>
+            <p className="muted">Everything you need for your farm in one place</p>
           </div>
 
           <div className="catGrid" ref={categoryRef}>
@@ -405,7 +414,7 @@ export default function Login() {
                 onClick={() =>
                   c.children
                     ? setOpenCategory(openCategory === c.title ? null : c.title)
-                    : handleCategoryClick(c.title)
+                    : scrollToSection("shop-featured")
                 }
               >
                 <div className="catIcon">{c.icon}</div>
@@ -436,15 +445,16 @@ export default function Login() {
 
           <div className="sectionRow">
             <div>
-              <h3 className="h3">Featured Products</h3>
-              <p className="muted small">Top-rated products loved by farmers</p>
+              <span className="sectionKicker sectionKicker--dark">Featured</span>
+              <h3 className="h3 h3--lg">Top picks for your farm</h3>
+              <p className="muted small">Highly rated products from fellow farmers</p>
             </div>
-            <a className="link" href="#view-all">
-              View All Products
-            </a>
+            <button type="button" className="link linkBtn" onClick={() => scrollToSection("shop-categories")}>
+              Browse categories
+            </button>
           </div>
 
-          <div className="prodGrid">
+          <div className="prodGrid" id="shop-featured">
             {products.map((p, idx) => (
               <div key={`${p.title}-${idx}`} className="prodCard animate-fade-up hover-lift" style={{ animationDelay: `${idx * 0.05}s` }}>
                 <div className="prodImgWrap">

@@ -1,18 +1,18 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useFetch } from '../../hooks/useFetch';
 import { productApi } from '../../api/productApi';
 import { orderApi } from '../../api/orderApi';
 import { useToast } from '../../hooks/useToast';
+import './UserDashboard.css';
 
-// Inner component — only mounted after auth is confirmed ready.
 const UserDashboardContent = () => {
   const { user } = useAuth();
   const { showToast, ToastComponent } = useToast();
 
   const fetchProducts = useCallback(() => productApi.getAllProducts(), []);
   const fetchOrders = useCallback(
-    () => user?.userId ? orderApi.getMyOrders(user.userId) : Promise.resolve([]),
+    () => (user?.userId ? orderApi.getMyOrders(user.userId) : Promise.resolve([])),
     [user?.userId]
   );
 
@@ -22,7 +22,7 @@ const UserDashboardContent = () => {
   const orders = myOrders || [];
 
   const openWhatsApp = (msg) => {
-    const phone = "919000000000"; // Company Support WhatsApp
+    const phone = '919000000000';
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
@@ -38,9 +38,9 @@ const UserDashboardContent = () => {
             productId: product.productId,
             productName: product.productName,
             quantity: 1,
-            priceAtOrder: product.price
-          }
-        ]
+            priceAtOrder: product.price,
+          },
+        ],
       };
       await orderApi.createOrder(payload);
       showToast(`Order placed successfully for ${product.productName}! Our team will contact you for payment.`, 'success');
@@ -49,115 +49,148 @@ const UserDashboardContent = () => {
     }
   };
 
+  const displayName = user?.firstName || user?.email?.split('@')[0] || 'Farmer';
+
   return (
     <div className="user-dashboard">
-      <div className="top-bar" style={{ background: 'var(--primary)', color: 'white', borderRadius: 'var(--radius)', marginBottom: '30px' }}>
-        <div>
-          <h1>Welcome, {user?.firstName || 'Farmer'}!</h1>
-          <p>Explore our seeds and track your reports</p>
+      <header className="user-dashboard__hero">
+        <div className="user-dashboard__hero-inner">
+          <span className="user-dashboard__eyebrow">Your farm hub</span>
+          <h1 className="user-dashboard__title">Welcome back, {displayName}</h1>
+          <p className="user-dashboard__subtitle">
+            Explore certified seeds, track orders, and reach our team on WhatsApp for soil reports and survey support.
+          </p>
         </div>
-        <button className="btn-success" style={{ background: '#25D366' }} onClick={() => openWhatsApp("Hello, I need assistance with my farm.")}>
-          Chat Support (WhatsApp)
+        <button
+          type="button"
+          className="user-dashboard__wa"
+          onClick={() => openWhatsApp('Hello, I need assistance with my farm.')}
+        >
+          <span aria-hidden>💬</span> Chat on WhatsApp
         </button>
-      </div>
+      </header>
 
-      <div className="grid-2">
-        <div className="table-container">
-          <div className="table-header">
-            <h2>Track Your Support</h2>
+      <div className="user-dashboard__grid">
+        <section className="user-dashboard__panel">
+          <div className="user-dashboard__panel-head">
+            <h2>Quick support</h2>
           </div>
-          <div className="modal-body">
-            <div style={{ display: 'grid', gap: '15px' }}>
-              <button className="btn-secondary" style={{ width: '100%', textAlign: 'left', padding: '20px' }} onClick={() => openWhatsApp("I want to see my latest Soil Report.")}>
-                📄 Download Soil Report via WhatsApp
-              </button>
-              <button className="btn-secondary" style={{ width: '100%', textAlign: 'left', padding: '20px' }} onClick={() => openWhatsApp("I want to see my Survey Information.")}>
-                📋 View Survey Info via WhatsApp
-              </button>
-            </div>
+          <div className="user-dashboard__panel-body">
+            <button
+              type="button"
+              className="user-dashboard__action-btn"
+              onClick={() => openWhatsApp('I want to see my latest Soil Report.')}
+            >
+              <span className="user-dashboard__action-icon">📄</span>
+              <span>Request soil report via WhatsApp</span>
+            </button>
+            <button
+              type="button"
+              className="user-dashboard__action-btn"
+              onClick={() => openWhatsApp('I want to see my Survey Information.')}
+            >
+              <span className="user-dashboard__action-icon">📋</span>
+              <span>Survey information &amp; updates</span>
+            </button>
           </div>
-        </div>
+        </section>
 
-        <div className="table-container">
-          <div className="table-header">
-            <h2>Recent Orders</h2>
+        <section className="user-dashboard__panel">
+          <div className="user-dashboard__panel-head">
+            <h2>Recent orders</h2>
           </div>
-          {ordersLoading ? (
-            <div className="loading"><div className="spinner"></div></div>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.length > 0 ? (
-                  orders.map(order => (
-                    <tr key={order.orderId}>
-                      <td>{order.items?.length > 0 ? order.items[0].productName : `Order #${order.orderId}`}</td>
-                      <td>
-                        <span className={`status-badge ${order.orderStatus === 'DELIVERED' ? 'active' : 'pending'}`}>
-                          {order.orderStatus}
-                        </span>
-                      </td>
+          <div className="user-dashboard__panel-body">
+            {ordersLoading ? (
+              <div className="loading">
+                <div className="spinner" />
+              </div>
+            ) : orders.length === 0 ? (
+              <p className="user-dashboard__empty">No orders yet — browse seeds below and place your first order.</p>
+            ) : (
+              <div className="user-dashboard__table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Item</th>
+                      <th>Status</th>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="2" style={{ textAlign: 'center', padding: '10px' }}>No orders yet</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
+                  </thead>
+                  <tbody>
+                    {orders.map((order) => (
+                      <tr key={order.orderId}>
+                        <td>
+                          {order.items?.length > 0 ? order.items[0].productName : `Order #${order.orderId}`}
+                        </td>
+                        <td>
+                          <span
+                            className={`user-dashboard__badge ${
+                              order.orderStatus === 'DELIVERED'
+                                ? 'user-dashboard__badge--ok'
+                                : 'user-dashboard__badge--pending'
+                            }`}
+                          >
+                            {order.orderStatus}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </section>
       </div>
 
-      <div style={{ marginTop: '40px' }}>
-        <h2 style={{ marginBottom: '20px' }}>Available Seed Products</h2>
+      <section>
+        <h2 className="user-dashboard__section-title">Available products</h2>
         {productsLoading ? (
-          <div className="loading"><div className="spinner"></div></div>
+          <div className="loading">
+            <div className="spinner" />
+          </div>
         ) : (
-          <div className="dashboard-stats">
+          <div className="user-dashboard__products">
             {products?.content?.length > 0 ? (
-              products.content.map(p => (
-                <div key={p.productId} className="stat-card hover-lift" style={{ display: 'block', padding: '0', overflow: 'hidden' }}>
-                  <div style={{ background: '#f0f0f0', height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '50px' }}>
-                    {p.productType === 'SEED' ? '🌱' : '🛒'}
+              products.content.map((p) => (
+                <article key={p.productId} className="user-dashboard__product">
+                  <div className="user-dashboard__product-visual">
+                    <span aria-hidden>{p.productType === 'SEED' ? '🌱' : '🛒'}</span>
                   </div>
-                  <div style={{ padding: '20px' }}>
+                  <div className="user-dashboard__product-body">
                     <h3>{p.productName}</h3>
-                    <p>Price: ₹{p.price}</p>
-                    <button className="btn-primary" style={{ marginTop: '10px' }} onClick={() => handleCheckout(p)}>Order Now</button>
+                    <p className="user-dashboard__price">₹{p.price}</p>
+                    <button type="button" className="user-dashboard__order-btn" onClick={() => handleCheckout(p)}>
+                      Order now
+                    </button>
                   </div>
-                </div>
+                </article>
               ))
             ) : (
-              <p>No products available at the moment.</p>
+              <p className="user-dashboard__empty">No products available at the moment.</p>
             )}
           </div>
         )}
-      </div>
-      
-      {/* Toast Notifications */}
+      </section>
+
       <ToastComponent />
     </div>
   );
 };
 
-// Outer shell — shows spinner until AuthContext finishes bootstrapping,
-// then mounts UserDashboardContent which fires API calls with a guaranteed token.
 const UserDashboard = () => {
   const { loading: authLoading } = useAuth();
 
   if (authLoading) {
-    return <div className="loading"><div className="spinner"></div></div>;
+    return (
+      <div className="user-dashboard">
+        <div className="loading">
+          <div className="spinner" />
+        </div>
+      </div>
+    );
   }
 
   return <UserDashboardContent />;
 };
 
 export default UserDashboard;
-
