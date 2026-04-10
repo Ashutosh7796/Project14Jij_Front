@@ -700,9 +700,29 @@
 
 @media (max-width: 768px) {
 
+  html,
+  body,
+  #root {
+    height: auto;
+    min-height: 100%;
+    overflow-y: auto;
+  }
+
   .emp-layout-wrapper {
 
   flex-direction: column;
+
+  max-height: none;
+
+  height: auto;
+
+  min-height: 100dvh;
+
+  overflow-y: auto;
+
+  overflow-x: hidden;
+
+  -webkit-overflow-scrolling: touch;
 
   }
 
@@ -958,6 +978,20 @@
 
   padding: 16px;
 
+  max-height: none;
+
+  overflow-y: visible;
+
+  overflow-x: hidden;
+
+  overscroll-behavior-y: auto;
+
+  padding-bottom: 24px;
+
+  }
+
+  .emp-main-content {
+    overflow: visible;
   }
 
   .emp-user-btn span {

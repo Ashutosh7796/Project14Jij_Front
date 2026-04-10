@@ -119,12 +119,14 @@ export function setToken(token) {
       );
     }
 
-    console.log(
-      "✅ Storing valid token:",
-      normalized.substring(0, 50) + "...",
-      "Length:",
-      normalized.length
-    );
+    if (import.meta.env.DEV) {
+      console.log(
+        "✅ Storing valid token:",
+        normalized.substring(0, 12) + "...",
+        "Length:",
+        normalized.length
+      );
+    }
     localStorage.setItem(TOKEN_KEY, normalized);
   }
 }

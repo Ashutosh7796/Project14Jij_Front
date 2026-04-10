@@ -1,12 +1,38 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import "./PreviousHistory.css";
 import SurveyDetailView from "../HistoryOverview/HistoryOverview";
 import FarmerRegistration from "../FarmerRegistration/FarmerRegistration";
 import { useToast } from "../../../hooks/useToast";
 import { BASE_URL } from "../../../config/api";
 import { authenticatedFetch, getToken } from "../../../utils/auth";
- 
+import { downloadFarmerInvoicePdf } from "../../../utils/farmerInvoicePdf";
+
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= breakpoint);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`);
+    const handler = (e) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 const PreviousHistory = () => {
+  const isMobile = useIsMobile();
+
+  const extractSurveyId = (item) => {
+    const candidates = [item?.surveyId, item?.id, item?.surveyID, item?.survey_id, item?.formNumber];
+    for (const candidate of candidates) {
+      if (candidate === null || candidate === undefined) continue;
+      const text = String(candidate).trim();
+      if (text) return text;
+    }
+    return "";
+  };
+
+  const navigate = useNavigate();
   const { showToast, ToastComponent } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedVillage, setSelectedVillage] = useState("");
@@ -24,6 +50,7 @@ const PreviousHistory = () => {
   const [pageSize] = useState(10); // fixed 10 records
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
+  const paymentStateCacheRef = useRef(new Map());
   // ✅ show only 3 page numbers (Pre 1 2 3 Next)
   const getVisiblePages = () => {
     const maxButtons = 3;
@@ -42,7 +69,6 @@ const PreviousHistory = () => {
   // Check authentication on mount
   useEffect(() => {
     const token = getToken();
-    const userRole = localStorage.getItem("role");
  
     if (!token) {
       showToast("You are not logged in. Please login first.", "error");
@@ -96,9 +122,7 @@ const PreviousHistory = () => {
  
       // Transform API data to match your existing structure
       const transformedData = data.map((item) => {
-        const hasSelfie = !!item.farmerSelfie?.imageUrl;
-        const hasSignature = !!item.farmerSignature?.imageUrl;
- 
+        const normalizedSurveyId = extractSurveyId(item);
         const status =
           item.formStatus === "ACTIVE"
             ? "Active"
@@ -107,7 +131,7 @@ const PreviousHistory = () => {
             : "Inactive";
  
         return {
-          id: item.surveyId || item.id,
+          id: normalizedSurveyId,
           farmerName: item.farmerName || "N/A",
           village: item.village || "N/A",
           surveyType: item.surveyType || "Annual",
@@ -121,16 +145,80 @@ const PreviousHistory = () => {
               })
             : "-",
           status,
+          hasSuccessfulPayment: false,
         };
       });
  
       setHistoryData(transformedData);
+      enrichPaymentState(transformedData);
     } catch (err) {
       setError(err.message || "Failed to load history data");
       setHistoryData([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchPaidSurveyIds = async (surveyIds) => {
+    const uniqueSurveyIds = [...new Set((surveyIds || []).filter(Boolean).map(String))];
+    if (!uniqueSurveyIds.length) return new Map();
+
+    const cache = paymentStateCacheRef.current;
+    const missingSurveyIds = uniqueSurveyIds.filter((id) => !cache.has(id));
+    if (!missingSurveyIds.length) {
+      return new Map(uniqueSurveyIds.map((id) => [id, cache.get(id)]));
+    }
+    try {
+      const res = await authenticatedFetch(
+        `${BASE_URL}/api/v1/farmer-payment/survey/bulk-status`,
+        {
+          method: "POST",
+          body: JSON.stringify({ surveyIds: missingSurveyIds }),
+        }
+      );
+
+      if (!res.ok) {
+        missingSurveyIds.forEach((surveyId) => cache.set(surveyId, null));
+        return new Map(uniqueSurveyIds.map((id) => [id, cache.get(id) || null]));
+      }
+
+      const json = await res.json().catch(() => ({}));
+      const successfulPaymentsBySurveyId = json?.successfulPaymentsBySurveyId
+        || json?.data?.successfulPaymentsBySurveyId
+        || {};
+
+      missingSurveyIds.forEach((surveyId) => {
+        const payment = successfulPaymentsBySurveyId?.[surveyId];
+        if (payment && typeof payment === "object") {
+          cache.set(surveyId, payment);
+        } else {
+          cache.set(surveyId, null);
+        }
+      });
+    } catch (e) {
+      missingSurveyIds.forEach((surveyId) => cache.set(surveyId, null));
+    }
+
+    return new Map(uniqueSurveyIds.map((id) => [id, cache.get(id) || null]));
+  };
+
+  const enrichPaymentState = async (rows) => {
+    const activeSurveyIds = rows
+      .filter((item) => item.status === "Active" && item.id)
+      .map((item) => item.id);
+    const paidSurveyIds = await fetchPaidSurveyIds(activeSurveyIds);
+
+    setHistoryData((prev) =>
+      prev.map((item) => {
+        const key = String(item.id || "");
+        const successfulPayment = key ? paidSurveyIds.get(key) || null : null;
+        return {
+          ...item,
+          hasSuccessfulPayment: !!successfulPayment,
+          successfulPayment,
+        };
+      })
+    );
   };
  
   const filteredData = historyData.filter((item) => {
@@ -183,6 +271,32 @@ const PreviousHistory = () => {
     // Refresh data after editing
     fetchHistoryData();
   };
+
+  const handleProceedToPayment = (item) => {
+    const surveyId = String(item?.id || "").trim();
+    if (!surveyId) {
+      showToast("Survey ID missing for payment.", "error");
+      return;
+    }
+
+    navigate(
+      `/employee/farmer-payment/${surveyId}?farmerName=${encodeURIComponent(
+        item.farmerName || ""
+      )}`
+    );
+  };
+
+  const handleDownloadInvoice = (item) => {
+    if (!item?.successfulPayment) {
+      showToast("Invoice details not available yet.", "error");
+      return;
+    }
+    downloadFarmerInvoicePdf({
+      ...item.successfulPayment,
+      farmerName: item.successfulPayment.farmerName || item.farmerName,
+      surveyId: item.successfulPayment.surveyId || item.id,
+    });
+  };
  
   // 🔹 Edit Mode → FarmerRegistration
   if (selectedSurvey !== null && isEditing) {
@@ -200,6 +314,7 @@ const PreviousHistory = () => {
               item.id === selectedSurvey ? { ...item, status: "Active" } : item
             )
           );
+          paymentStateCacheRef.current.delete(String(selectedSurvey));
           handleBackToList();
         }}
       />
@@ -321,89 +436,117 @@ const PreviousHistory = () => {
         Showing {filteredData.length} farmer histories.
       </div>
  
-      <div className="table-container">
-        <table className="history-table">
-          <thead>
-            <tr>
-              <th>Farmer Name</th>
-              <th>Village</th>
-              <th>Survey Type</th>
-              <th>Date</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredData.map((item) => (
-              <tr key={item.id}>
-                <td data-label="Farmer Name">{item.farmerName}</td>
-                <td data-label="Village">{item.village}</td>
-                <td data-label="Survey Type">{item.surveyType}</td>
-                <td data-label="Date">{item.date}</td>
-                <td data-label="Status">
-                  <span className={`status-badge ${item.status.toLowerCase()}`}>
-                    {item.status}
-                  </span>
-                </td>
-                <td data-label="Action">
-                  <div className="action-btn-wrapper">
-                    {item.status === "Active" ? (
-                      <button
-                        className="btn-view"
-                        onClick={() => handleView(item.id)}
-                      >
-                        View
-                      </button>
+      {isMobile ? (
+        <div className="mobile-card-list">
+          {filteredData.map((item, idx) => (
+            <div className="farmer-card" key={item.id || `${item.formNumber || "survey"}-${idx}`}>
+              <div className="farmer-card-row">
+                <span className="farmer-card-label">Farmer Name</span>
+                <span className="farmer-card-value">{item.farmerName}</span>
+              </div>
+              <div className="farmer-card-row">
+                <span className="farmer-card-label">Village</span>
+                <span className="farmer-card-value">{item.village}</span>
+              </div>
+              <div className="farmer-card-row">
+                <span className="farmer-card-label">Survey Type</span>
+                <span className="farmer-card-value">{item.surveyType}</span>
+              </div>
+              <div className="farmer-card-row">
+                <span className="farmer-card-label">Date</span>
+                <span className="farmer-card-value">{item.date}</span>
+              </div>
+              <div className="farmer-card-row">
+                <span className="farmer-card-label">Status</span>
+                <span className={`status-badge ${item.status.toLowerCase()}`}>{item.status}</span>
+              </div>
+              <div className="farmer-card-actions">
+                {item.status === "Active" ? (
+                  <>
+                    <button className="btn-view" onClick={() => handleView(item.id)} disabled={!item.id}>View</button>
+                    {!item.id ? (
+                      <span className="btn-paid">ID Missing</span>
+                    ) : item.hasSuccessfulPayment ? (
+                      <>
+                        <span className="btn-paid">Paid</span>
+                        <button className="btn-invoice" onClick={() => handleDownloadInvoice(item)}>Download Invoice</button>
+                      </>
                     ) : (
-                      <button
-                        className="btn-upload"
-                        onClick={() => handleResume(item.id)}
-                      >
-                        ⬆ Upload
-                      </button>
+                      <button className="btn-payment" onClick={() => handleProceedToPayment(item)}>Proceed To Payment</button>
                     )}
-                  </div>
-                </td>
+                  </>
+                ) : (
+                  <button className="btn-upload" onClick={() => handleResume(item.id)}>Upload</button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="table-container">
+          <table className="history-table">
+            <thead>
+              <tr>
+                <th>Farmer Name</th>
+                <th>Village</th>
+                <th>Survey Type</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Action</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
- 
-        {filteredData.length === 0 && (
-          <div className="no-results">
-            <p>No farmer histories found matching your filters.</p>
-          </div>
-        )}
-        {totalPages > 1 && (
-          <div className="pagination-wrapper">
-            <button
-              className="page-btn"
-              disabled={page === 0}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              Pre
-            </button>
- 
-            {getVisiblePages().map((p) => (
-              <button
-                key={p}
-                className={`page-btn ${page === p ? "active" : ""}`}
-                onClick={() => setPage(p)}
-              >
-                {p + 1}
-              </button>
-            ))}
- 
-            <button
-              className="page-btn"
-              disabled={page === totalPages - 1}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </button>
-          </div>
-        )}
-      </div>
+            </thead>
+            <tbody>
+              {filteredData.map((item, idx) => (
+                <tr key={item.id || `${item.formNumber || "survey"}-${idx}`}>
+                  <td>{item.farmerName}</td>
+                  <td>{item.village}</td>
+                  <td>{item.surveyType}</td>
+                  <td>{item.date}</td>
+                  <td>
+                    <span className={`status-badge ${item.status.toLowerCase()}`}>{item.status}</span>
+                  </td>
+                  <td>
+                    <div className="action-btn-wrapper">
+                      {item.status === "Active" ? (
+                        <>
+                          <button className="btn-view" onClick={() => handleView(item.id)} disabled={!item.id}>View</button>
+                          {!item.id ? (
+                            <span className="btn-paid">ID Missing</span>
+                          ) : item.hasSuccessfulPayment ? (
+                            <>
+                              <span className="btn-paid">Paid</span>
+                              <button className="btn-invoice" onClick={() => handleDownloadInvoice(item)}>Download Invoice</button>
+                            </>
+                          ) : (
+                            <button className="btn-payment" onClick={() => handleProceedToPayment(item)}>Proceed To Payment</button>
+                          )}
+                        </>
+                      ) : (
+                        <button className="btn-upload" onClick={() => handleResume(item.id)}>Upload</button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {filteredData.length === 0 && (
+        <div className="no-results">
+          <p>No farmer histories found matching your filters.</p>
+        </div>
+      )}
+      {totalPages > 1 && (
+        <div className="pagination-wrapper">
+          <button className="page-btn" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Pre</button>
+          {getVisiblePages().map((p) => (
+            <button key={p} className={`page-btn ${page === p ? "active" : ""}`} onClick={() => setPage(p)}>{p + 1}</button>
+          ))}
+          <button className="page-btn" disabled={page === totalPages - 1} onClick={() => setPage((p) => p + 1)}>Next</button>
+        </div>
+      )}
       
       {/* Toast Notifications */}
       <ToastComponent />

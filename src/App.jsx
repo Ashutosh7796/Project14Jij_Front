@@ -29,6 +29,8 @@ import FAQs from './pages/footer/FAQs';
 import Blog from './pages/footer/Blog';
 
 import AuthLogin from "./pages/auth/AuthLogin";
+import FarmerPaymentResultPage from './pages/EmployeeModule/FarmerPayment/FarmerPaymentResultPage';
+import FarmerPaymentProcessingPage from './pages/EmployeeModule/FarmerPayment/FarmerPaymentProcessingPage';
 
 function App() {
   return (
@@ -69,6 +71,10 @@ function App() {
         <Route path="/contact" element={<ContactUs />} />
         <Route path="/faqs" element={<FAQs />} />
         <Route path="/blog" element={<Blog />} />
+        <Route path="/farmer-payment/processing" element={<FarmerPaymentProcessingPage />} />
+        <Route path="/farmer-payment/success" element={<FarmerPaymentResultPage status="success" />} />
+        <Route path="/farmer-payment/failed" element={<FarmerPaymentResultPage status="failed" />} />
+        <Route path="/farmer-payment/cancelled" element={<FarmerPaymentResultPage status="cancelled" />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

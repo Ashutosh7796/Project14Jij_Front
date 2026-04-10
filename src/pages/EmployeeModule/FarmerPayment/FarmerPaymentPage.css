@@ -1,0 +1,130 @@
+.farmer-payment-page {
+  min-height: calc(100vh - 40px);
+  padding: 24px;
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+}
+
+.farmer-payment-card {
+  max-width: 980px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 18px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 14px 35px rgba(15, 23, 42, 0.08);
+  padding: 24px;
+}
+
+.farmer-payment-head h1 {
+  margin: 0;
+  color: #111827;
+  font-size: 30px;
+}
+
+.farmer-payment-head p {
+  margin-top: 8px;
+  color: #475569;
+}
+
+.payment-section {
+  margin-top: 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 16px;
+  background: #fff;
+}
+
+.payment-section h2 {
+  margin: 0 0 12px;
+  font-size: 26px;
+  color: #1f2937;
+}
+
+.payment-fee {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.payment-fee-box {
+  border: 1px solid #d1fae5;
+  border-radius: 12px;
+  background: #fff;
+  padding: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fee-label {
+  font-size: 28px;
+  color: #334155;
+}
+
+.fee-value {
+  font-size: 34px;
+  font-weight: 800;
+  color: #16a34a;
+}
+
+.fee-words {
+  margin: 10px 0 0;
+  font-size: 22px;
+  color: #6b7280;
+  text-align: right;
+}
+
+.payment-section ul {
+  margin: 0;
+  padding-left: 22px;
+  color: #334155;
+  line-height: 1.6;
+  font-size: 23px;
+}
+
+.payment-section li + li {
+  margin-top: 8px;
+}
+
+.payment-actions {
+  margin-top: 24px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.payment-actions .btn-primary,
+.payment-actions .btn-secondary {
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.payment-actions .btn-primary {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  color: #fff;
+}
+
+.payment-actions .btn-secondary {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.payment-error {
+  margin-top: 12px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.payment-processing {
+  margin-top: 12px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-weight: 600;
+}

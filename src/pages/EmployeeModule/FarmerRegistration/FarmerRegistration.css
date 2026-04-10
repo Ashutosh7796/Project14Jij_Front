@@ -1016,7 +1016,7 @@
   transform: translateX(-50%);
   z-index: 9999;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding: 12px 20px;
   border-radius: 8px;
@@ -1024,8 +1024,15 @@
   font-weight: 500;
   box-shadow: 0 4px 16px rgba(0,0,0,0.15);
   min-width: 260px;
-  max-width: 90vw;
+  max-width: min(92vw, 420px);
   animation: frToastIn 0.25s ease;
+}
+
+.fr-toast__message {
+  flex: 1;
+  white-space: pre-line;
+  line-height: 1.45;
+  text-align: left;
 }
 
 @keyframes frToastIn {
@@ -1049,6 +1056,35 @@
   line-height: 1;
 }
 .fr-toast__close:hover { opacity: 1; }
+
+/* Validation scroll targets */
+.fr-scroll-anchor {
+  outline: none;
+}
+
+.fr-scroll-anchor--error {
+  padding: 8px;
+  margin: -8px;
+  border-radius: 8px;
+  background: rgba(254, 226, 226, 0.35);
+  border: 1px solid #fecaca;
+}
+
+.employee-field--error {
+  padding: 10px;
+  margin: -4px 0 8px;
+  border-radius: 10px;
+  border: 1px solid #fecaca;
+  background: #fff5f5;
+}
+
+.signature-section--error {
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: 10px;
+  border: 1px solid #fecaca;
+  background: #fff5f5;
+}
 
 /* ── Confirm button loading state ── */
 .fr-btn-loading {

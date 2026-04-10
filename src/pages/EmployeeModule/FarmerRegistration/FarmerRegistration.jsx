@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import "./FarmerRegistration.css";
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { BASE_URL } from "../../../config/api";
 import { getToken, clearAuthData } from "../../../utils/auth";
 
@@ -8,12 +9,72 @@ import { getToken, clearAuthData } from "../../../utils/auth";
 const Toast = ({ toast, onClose }) => {
   if (!toast) return null;
   return (
-    <div className={`fr-toast fr-toast--${toast.type}`}>
-      <span>{toast.message}</span>
+    <div className={`fr-toast fr-toast--${toast.type}`} role="alert">
+      <span className="fr-toast__message">{toast.message}</span>
       <button className="fr-toast__close" onClick={onClose} aria-label="Close">×</button>
     </div>
   );
 };
+
+/** Field order for “first error” scroll + summary listing */
+const CONFIRM_FIELD_ORDER = [
+  "farmerName",
+  "place",
+  "mobileNumber",
+  "village",
+  "taluka",
+  "district",
+  "farmingType",
+  "termsAccepted",
+];
+
+const UPLOAD_FIELD_ORDER = ["selfie", "signature"];
+
+function buildConfirmFieldErrors(formData) {
+  const errors = {};
+  if (!String(formData.farmerName || "").trim()) {
+    errors.farmerName = "Farmer's name is required.";
+  }
+  if (!String(formData.place || "").trim()) {
+    errors.place = "Place is required.";
+  }
+  const mobile = String(formData.mobileNumber || "").replace(/\D/g, "");
+  if (!mobile || mobile.length !== 10) {
+    errors.mobileNumber = "Enter a valid 10-digit mobile number.";
+  }
+  if (!String(formData.village || "").trim()) {
+    errors.village = "Village is required.";
+  }
+  if (!String(formData.taluka || "").trim()) {
+    errors.taluka = "Taluka is required.";
+  }
+  if (!String(formData.district || "").trim()) {
+    errors.district = "District is required.";
+  }
+  if (!formData.farmingType) {
+    errors.farmingType = "Select a type of farming (Irrigated or Rain-fed).";
+  }
+  if (!formData.termsAccepted) {
+    errors.termsAccepted = "You must agree to the terms and conditions.";
+  }
+  return errors;
+}
+
+function firstKeyInOrder(errors, order) {
+  return order.find((k) => errors[k]) || null;
+}
+
+function formatValidationToast(errors, order) {
+  const keys = order.filter((k) => errors[k]);
+  if (!keys.length) return "";
+  const lines = keys.map((k) => `• ${errors[k]}`);
+  if (lines.length <= 5) {
+    return `Please fix the following:\n${lines.join("\n")}`;
+  }
+  const head = lines.slice(0, 4).join("\n");
+  const rest = lines.length - 4;
+  return `Please fix ${lines.length} issues:\n${head}\n• …and ${rest} more (see highlighted fields below)`;
+}
 
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -25,6 +86,7 @@ export default function FarmerRegistration({
   scrollToSelfie = false,
   onSuccess,
 }) {
+const navigate = useNavigate();
 
 useEffect(() => {
   // ✅ MOBILE-ONLY hard reset scroll (iOS + Android safe)
@@ -113,25 +175,55 @@ useEffect(() => {
 
   const [fieldErrors, setFieldErrors] = useState({});
   const fieldRefs = useRef({});
+  const toastTimerRef = useRef(null);
 
   // ── inline toast (replaces all alert() calls) ──────────────
   const [toast, setToast] = useState(null);
-  const showToast = (message, type = 'error') => {
+  const showToast = (message, type = "error", durationMs = 4000) => {
     setToast({ message, type });
-    // auto-dismiss after 4 s
-    setTimeout(() => setToast(null), 4000);
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = window.setTimeout(() => setToast(null), durationMs);
   };
 
-  const setFE = (name, msg) => {
-    setFieldErrors(prev => ({ ...prev, [name]: msg }));
-    setTimeout(() => {
-      const el = fieldRefs.current[name];
-      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus?.(); }
-    }, 50);
+  const clearFE = (name) =>
+    setFieldErrors((prev) => {
+      const n = { ...prev };
+      delete n[name];
+      return n;
+    });
+
+  const scheduleScrollToField = (fieldKey) => {
+    if (!fieldKey) return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = fieldRefs.current[fieldKey];
+        if (!el) return;
+        el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+        if (typeof el.focus === "function") {
+          try {
+            el.focus({ preventScroll: true });
+          } catch {
+            el.focus();
+          }
+        }
+      });
+    });
   };
-  const clearFE = (name) => setFieldErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+
+  const applyValidationErrors = (errors, order, toastDuration = 6500, merge = false) => {
+    if (merge) {
+      setFieldErrors((prev) => ({ ...prev, ...errors }));
+    } else {
+      setFieldErrors(errors);
+    }
+    const first = firstKeyInOrder(errors, order);
+    scheduleScrollToField(first);
+    const msg = formatValidationToast(errors, order);
+    if (msg) showToast(msg, "error", toastDuration);
+  };
 
   const [surveyId, setSurveyId] = useState(null);
+  const [lastSubmittedSurveyId, setLastSubmittedSurveyId] = useState(null);
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -242,6 +334,7 @@ useEffect(() => {
           selfieFile: file,
           selfiePreview: reader.result,
         }));
+        clearFE("selfie");
         stopCamera();
       };
       reader.readAsDataURL(blob);
@@ -314,20 +407,8 @@ useEffect(() => {
     }
 
     const isImage = file.type.startsWith("image/");
-    const isPdf = file.type === "application/pdf";
-
-    if (!isImage && !isPdf) {
-      showToast("Only image or PDF files are allowed");
-      e.target.value = "";
-      return;
-    }
-
-    if (isPdf) {
-      setFormData((p) => ({
-        ...p,
-        signatureFile: file,
-        signaturePreview: null,
-      }));
+    if (!isImage) {
+      showToast("Only image files are allowed for signature");
       e.target.value = "";
       return;
     }
@@ -340,6 +421,7 @@ useEffect(() => {
           signatureFile: normalizedFile,
           signaturePreview: reader.result,
         }));
+        clearFE("signature");
       };
       reader.readAsDataURL(normalizedFile);
     });
@@ -417,6 +499,7 @@ useEffect(() => {
             signatureFile: file,
             signaturePreview: reader.result,
           }));
+          clearFE("signature");
           setShowDrawPad(false);
         };
         reader.readAsDataURL(blob);
@@ -429,52 +512,22 @@ useEffect(() => {
   /* ===================== CONFIRM (CREATE SURVEY) ===================== */
 
   const handleConfirm = async () => {
+    const confirmErrors = buildConfirmFieldErrors(formData);
+    if (Object.keys(confirmErrors).length > 0) {
+      applyValidationErrors(confirmErrors, CONFIRM_FIELD_ORDER);
+      return undefined;
+    }
+
     setFieldErrors({});
-    let hasError = false;
 
-    if (!formData.farmerName.trim()) {
-      setFE('farmerName', "Farmer's Name is required");
-      hasError = true;
-    }
-    if (!formData.place.trim()) {
-      setFE('place', "Place is required");
-      hasError = true;
-    }
-    if (!formData.mobileNumber || formData.mobileNumber.length !== 10) {
-      setFE('mobileNumber', "Enter a valid 10-digit Mobile Number");
-      hasError = true;
-    }
-    if (!formData.village.trim()) {
-      setFE('village', "Village is required");
-      hasError = true;
-    }
-    if (!formData.taluka.trim()) {
-      setFE('taluka', "Taluka is required");
-      hasError = true;
-    }
-    if (!formData.district.trim()) {
-      setFE('district', "District is required");
-      hasError = true;
-    }
-    if (!formData.farmingType) {
-      setFE('farmingType', "Please select Type of Farming");
-      hasError = true;
-    }
-    if (!formData.termsAccepted) {
-      setFE('termsAccepted', "Please accept terms & conditions");
-      hasError = true;
-    }
-
-    if (hasError) return;
-
-    if (surveyId) return;
+    if (surveyId) return surveyId;
 
     let token;
     try {
       token = getValidToken();
     } catch (error) {
       showToast(error.message);
-      return;
+      return undefined;
     }
 
     const payload = {
@@ -713,40 +766,47 @@ useEffect(() => {
   //     setIsSubmitting(false);
   //   }
   // };
-    const handleSubmit = async () => {
-  try {
-    setIsSubmitting(true);
+  const handleSubmit = async () => {
+    try {
+      setIsSubmitting(true);
 
-    let activeSurveyId = surveyId;
+      let activeSurveyId = surveyId;
 
-    if (!activeSurveyId && !isEdit) {
-      activeSurveyId = await handleConfirm();
-    }
-
-    // ✅ Upload selfie first (if exists)
-    if (formData.selfieFile) {
-      await uploadSelfie(activeSurveyId);
-    }
-
-    // ✅ Then upload signature (if exists)
-    if (formData.signatureFile) {
-      await uploadSignature(activeSurveyId);
-    }
-
-    setShowSuccessModal(true);
-
-    setTimeout(() => {
-      if (onSuccess) {
-        onSuccess();
+      if (!activeSurveyId && !isEdit) {
+        activeSurveyId = await handleConfirm();
+        if (activeSurveyId == null) {
+          return;
+        }
       }
-    }, 800);
 
-  } catch (err) {
-    showToast(err.message);
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+      const uploadErrors = {};
+      if (!formData.selfieFile) {
+        uploadErrors.selfie = "Take a photo with the farmer (selfie) before saving.";
+      }
+      if (!formData.signatureFile) {
+        uploadErrors.signature = "Add your signature (draw or upload an image) before saving.";
+      }
+      if (Object.keys(uploadErrors).length > 0) {
+        applyValidationErrors(uploadErrors, UPLOAD_FIELD_ORDER, 6500, true);
+        return;
+      }
+
+      if (formData.selfieFile) {
+        await uploadSelfie(activeSurveyId);
+      }
+
+      if (formData.signatureFile) {
+        await uploadSignature(activeSurveyId);
+      }
+
+      setLastSubmittedSurveyId(activeSurveyId);
+      setShowSuccessModal(true);
+    } catch (err) {
+      showToast(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleCancel = () => {
     if (!window.confirm("Are you sure you want to cancel?")) return;
@@ -780,7 +840,17 @@ useEffect(() => {
 
   const submitAnotherSurvey = () => {
     setShowSuccessModal(false);
+    if (onSuccess) onSuccess();
     handleCancel();
+  };
+
+  const proceedToPayment = () => {
+    if (!lastSubmittedSurveyId) return;
+    setShowSuccessModal(false);
+    if (onSuccess) onSuccess();
+    navigate(
+      `/employee/farmer-payment/${lastSubmittedSurveyId}?farmerName=${encodeURIComponent(formData.farmerName || "")}`
+    );
   };
 
   return (
@@ -922,7 +992,13 @@ useEffect(() => {
             <h2 className="section-title">
               <span className="section-icon">🌾</span> Farm Information
             </h2>
-            <div className="form-group">
+            <div
+              className="form-group"
+              ref={(el) => {
+                fieldRefs.current.farmingType = el;
+              }}
+              tabIndex={-1}
+            >
               <label className="form-label">
                 Type of Farming <span className="required">*</span>
               </label>
@@ -1193,21 +1269,31 @@ useEffect(() => {
 
             <br />
 
-            <label className="checkbox-label terms-checkbox">
-              <input
-                type="checkbox"
-                name="termsAccepted"
-                checked={formData.termsAccepted}
-                onChange={handleInputChange}
-                className="checkbox-input"
-                disabled={isSubmitting}
-              />
-              <span className="checkbox-text">
-                I agree to the terms and conditions{" "}
-                <span className="required">*</span>
-              </span>
-            </label>
-            {fieldErrors.termsAccepted && <span className="radio-error-text">{fieldErrors.termsAccepted}</span>}
+            <div
+              ref={(el) => {
+                fieldRefs.current.termsAccepted = el;
+              }}
+              tabIndex={-1}
+              className={fieldErrors.termsAccepted ? "fr-scroll-anchor fr-scroll-anchor--error" : "fr-scroll-anchor"}
+            >
+              <label className="checkbox-label terms-checkbox">
+                <input
+                  type="checkbox"
+                  name="termsAccepted"
+                  checked={formData.termsAccepted}
+                  onChange={handleInputChange}
+                  className="checkbox-input"
+                  disabled={isSubmitting}
+                />
+                <span className="checkbox-text">
+                  I agree to the terms and conditions{" "}
+                  <span className="required">*</span>
+                </span>
+              </label>
+              {fieldErrors.termsAccepted && (
+                <span className="radio-error-text">{fieldErrors.termsAccepted}</span>
+              )}
+            </div>
 
             {/* Confirm Button */}
             {formData.termsAccepted && !isConfirmed && (
@@ -1260,7 +1346,13 @@ useEffect(() => {
               </div> */}
 
                 {/* Photo with Farmer */}
-                <div className="employee-field">
+                <div
+                  className={`employee-field${fieldErrors.selfie ? " employee-field--error" : ""}`}
+                  ref={(el) => {
+                    fieldRefs.current.selfie = el;
+                  }}
+                  tabIndex={-1}
+                >
                   <label>Photo with Farmer (Selfie)</label>
 
                   {!showCamera && !formData.selfiePreview && (
@@ -1307,12 +1399,24 @@ useEffect(() => {
                   )}
 
                   <canvas ref={canvasRef} style={{ display: "none" }} />
+                  {fieldErrors.selfie && (
+                    <span className="field-error-text">{fieldErrors.selfie}</span>
+                  )}
                 </div>
               </div>
 
               {/* Signature */}
-              <div className="signature-section">
+              <div
+                className={`signature-section${fieldErrors.signature ? " signature-section--error" : ""}`}
+                ref={(el) => {
+                  fieldRefs.current.signature = el;
+                }}
+                tabIndex={-1}
+              >
                 <label>Employee Signature:</label>
+                {fieldErrors.signature && (
+                  <span className="field-error-text">{fieldErrors.signature}</span>
+                )}
 
                 <div className="signature-actions">
                   <button
@@ -1336,7 +1440,7 @@ useEffect(() => {
 
                   <input
                     type="file"
-                    accept="image/*,application/pdf"
+                    accept="image/*"
                     hidden
                     ref={signatureInputRef}
                     onChange={handleSignatureUpload}
@@ -1514,6 +1618,13 @@ useEffect(() => {
                 className="btn btn-primary modal-btn"
               >
                 Submit Another Survey
+              </button>
+              <button
+                onClick={proceedToPayment}
+                className="btn btn-secondary modal-btn"
+                style={{ marginLeft: 8 }}
+              >
+                Proceed To Payment
               </button>
             </div>
           </div>
