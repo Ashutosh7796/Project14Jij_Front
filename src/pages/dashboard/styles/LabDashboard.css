@@ -284,6 +284,74 @@
     overflow-x: hidden !important;
   } */
 }
+
+/* ── Lab dashboard auth skeleton ── */
+.lab-sk-auth-top {
+  align-items: center;
+}
+
+.lab-sk-auth-dates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.lab-sk-pill {
+  width: 118px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.lab-sk-profile-block {
+  width: 200px;
+  height: 52px;
+  border-radius: 10px;
+}
+
+.lab-stat-card.lab-sk-stat-fake {
+  pointer-events: none;
+}
+
+.lab-stat-card.lab-sk-stat-fake .dash-sk-line {
+  background: rgba(255, 255, 255, 0.35);
+  animation: dash-sk-pulse 1.15s ease-in-out infinite;
+}
+
+.lab-sk-stat-label {
+  width: 100px;
+  height: 12px;
+  border-radius: 4px;
+}
+
+.lab-sk-stat-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.lab-sk-stat-value {
+  width: 48px;
+  height: 28px;
+  margin-top: 8px;
+  border-radius: 6px;
+}
+
+.lab-quick-box.lab-sk-quick-fake {
+  pointer-events: none;
+}
+
+.lab-sk-quick-h {
+  width: 100px;
+  height: 14px;
+  margin-bottom: 12px;
+}
+
+.lab-sk-quick-btn {
+  width: 100%;
+  height: 36px;
+  border-radius: 8px;
+}
  
  
  

@@ -1,8 +1,16 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useFetch } from '../../hooks/useFetch';
 import { adminApi } from '../../api/adminApi';
+import { fetchDashboardCardMetrics } from '../../api/dashboardMetrics';
 import { useAuth } from '../../context/AuthContext';
+import {
+  AdminDashboardAuthShell,
+  StatCardsSkeleton,
+  OrderTrackSkeleton,
+  SummarySkeleton,
+  FarmersTableSkeleton,
+} from './DashboardSkeletons';
 import './styles/AdminDashboards.css';
 
 /* ─── helpers ─────────────────────────────────────────────── */
@@ -55,22 +63,47 @@ const EmptyState = ({ icon, title, subtitle }) => (
 // Inner component — only mounted after auth is confirmed ready.
 // This guarantees useFetch never fires without a valid token.
 const DashboardContent = () => {
-  const fetchStats  = useCallback(() => adminApi.getDashboardStats(), []);
+  const fetchMetrics = useCallback(() => fetchDashboardCardMetrics(), []);
   const fetchOrders = useCallback(() => adminApi.getAllFarmers(0, 5), []);
 
-  const { data: stats,      loading: statsLoading  } = useFetch(fetchStats);
+  const { data: metrics,     loading: metricsLoading } = useFetch(fetchMetrics);
   const { data: ordersData, loading: ordersLoading } = useFetch(fetchOrders);
 
-  if (statsLoading || ordersLoading) {
-    return <div className="loading"><div className="spinner"></div></div>;
-  }
+  const m = useMemo(
+    () =>
+      metrics ?? {
+        totalUsers: 0,
+        employees: 0,
+        products: 0,
+        orders: 0,
+        orderTrack: null,
+      },
+    [metrics]
+  );
 
-  const s = stats ?? {};
+  const graphData = useMemo(() => {
+    if (metricsLoading) return [];
+    const raw = metrics?.orderTrack;
+    if (Array.isArray(raw) && raw.length > 0) {
+      return raw.map((p) => ({
+        label: p.label || 'Wk',
+        plan: Number(p.plan) || 0,
+        actual: Number(p.actual) || 0,
+      }));
+    }
+    return GRAPH_DATA;
+  }, [metricsLoading, metrics]);
+
+  const graphPeak = useMemo(
+    () => Math.max(1, ...graphData.map((d) => Math.max(d.plan, d.actual))),
+    [graphData]
+  );
+
   const statCards = [
-    { label: 'Total Users',  value: s.farmers  ?? s.totalUsers    ?? '0', icon: '👤' },
-    { label: 'Employees',    value: s.employees ?? s.totalEmployees ?? '0', icon: '👩‍💻' },
-    { label: 'Products',     value: s.products  ?? s.totalProducts  ?? '0', icon: '📦' },
-    { label: 'Total Orders', value: s.orders    ?? s.totalOrders    ?? '0', icon: '🛍️' },
+    { label: 'Total Users',  value: m.totalUsers,  icon: '👤' },
+    { label: 'Employees',    value: m.employees,   icon: '👩‍💻' },
+    { label: 'Products',     value: m.products,    icon: '📦' },
+    { label: 'Total Orders', value: m.orders,      icon: '🛍️' },
   ];
 
   const ordersList = (() => {
@@ -87,7 +120,11 @@ const DashboardContent = () => {
 
       {/* ── STAT CARDS ── */}
       <div className="stats-grid">
-        {statCards.map(c => <StatCard key={c.label} {...c} />)}
+        {metricsLoading ? (
+          <StatCardsSkeleton />
+        ) : (
+          statCards.map((c) => <StatCard key={c.label} {...c} />)
+        )}
       </div>
 
       {/* ── QUICK ACTIONS ── */}
@@ -104,7 +141,9 @@ const DashboardContent = () => {
       {/* ── RECENT FARMERS / ORDERS ── */}
       <div className="content-box">
         <div className="box-header"><h2>Recent Farmers / Orders</h2></div>
-        {ordersList.length === 0 ? (
+        {ordersLoading ? (
+          <FarmersTableSkeleton rows={5} />
+        ) : ordersList.length === 0 ? (
           <EmptyState
             icon="🌾"
             title="No farmer records yet"
@@ -147,22 +186,32 @@ const DashboardContent = () => {
               <span className="legend-item"><i className="legend-dot actual"></i> Actual</span>
             </div>
           </div>
-          <div className="graph-container">
-            <div className="y-axis">
-              <span>100</span><span>75</span><span>50</span><span>25</span><span>0</span>
-            </div>
-            <div className="bars-wrapper">
-              {GRAPH_DATA.map((d) => (
-                <div key={d.label} className="bar-group">
-                  <div className="bar-stacked">
-                    <div className="bar-plan"   style={{ height: `${d.plan}%` }} />
-                    <div className="bar-actual" style={{ height: `${d.actual}%` }} />
+          {metricsLoading ? (
+            <OrderTrackSkeleton />
+          ) : (
+            <div className="graph-container">
+              <div className="y-axis">
+                <span>100</span><span>75</span><span>50</span><span>25</span><span>0</span>
+              </div>
+              <div className="bars-wrapper">
+                {graphData.map((d) => (
+                  <div key={d.label} className="bar-group">
+                    <div className="bar-stacked">
+                      <div
+                        className="bar-plan"
+                        style={{ height: `${(d.plan / graphPeak) * 100}%` }}
+                      />
+                      <div
+                        className="bar-actual"
+                        style={{ height: `${(d.actual / graphPeak) * 100}%` }}
+                      />
+                    </div>
+                    <span className="bar-label">{d.label}</span>
                   </div>
-                  <span className="bar-label">{d.label}</span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
           <div className="chart-footer-months">
             <span>8 weeks ago</span><span>4 weeks ago</span><span>This week</span>
           </div>
@@ -170,26 +219,20 @@ const DashboardContent = () => {
 
         <div className="content-box">
           <div className="box-header"><h2>Summary</h2></div>
-          <div className="work-stats-panel">
-            {!stats ? (
-              <EmptyState
-                icon="📊"
-                title="No stats available yet"
-                subtitle="Summary data will appear here once activity is recorded."
-              />
-            ) : (
-              <>
-                <div className="work-row">
-                  <div className="work-cell">Total Users: <span className="val">{s.farmers ?? s.totalUsers ?? '0'}</span></div>
-                  <div className="work-cell">Employees: <span className="val">{s.employees ?? '0'}</span></div>
-                </div>
-                <div className="work-row">
-                  <div className="work-cell">Products: <span className="val-green">{s.products ?? '0'}</span></div>
-                  <div className="work-cell">Orders: <span className="val-green">{s.orders ?? '0'}</span></div>
-                </div>
-              </>
-            )}
-          </div>
+          {metricsLoading ? (
+            <SummarySkeleton />
+          ) : (
+            <div className="work-stats-panel">
+              <div className="work-row">
+                <div className="work-cell">Total Users: <span className="val">{m.totalUsers}</span></div>
+                <div className="work-cell">Employees: <span className="val">{m.employees}</span></div>
+              </div>
+              <div className="work-row">
+                <div className="work-cell">Products: <span className="val-green">{m.products}</span></div>
+                <div className="work-cell">Orders: <span className="val-green">{m.orders}</span></div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -203,7 +246,7 @@ const Dashboard = () => {
   const { loading: authLoading } = useAuth();
 
   if (authLoading) {
-    return <div className="loading"><div className="spinner"></div></div>;
+    return <AdminDashboardAuthShell />;
   }
 
   return <DashboardContent />;

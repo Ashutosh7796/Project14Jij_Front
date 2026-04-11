@@ -273,10 +273,10 @@ export function getAuthHeaders(isFormData = false) {
  * Session expiry is detected at the AuthContext level (bootstrap
  * check on mount, token-expiry validation).
  *
- * @param {object} [fetchMeta] — optional: { skipRateLimit?: boolean, rateLimitType?: string }
+ * @param {object} [fetchMeta] — optional: { skipRateLimit?: boolean, rateLimitType?: string, skipGetRetry?: boolean }
  */
 export async function authenticatedFetch(url, options = {}, fetchMeta = {}) {
-  const { skipRateLimit = false, rateLimitType = "api" } = fetchMeta;
+  const { skipRateLimit = false, rateLimitType = "api", skipGetRetry = false } = fetchMeta;
   if (!skipRateLimit) {
     const rateCheck = checkRateLimit(url, rateLimitType);
     if (!rateCheck.allowed) {
@@ -301,8 +301,10 @@ export async function authenticatedFetch(url, options = {}, fetchMeta = {}) {
   if (isGET) {
     let res;
     // Smart Retry: Handle backend DB lock race conditions (e.g. immediately after login)
-    // Allows up to 2 retries (3 attempts total).
-    for (let i = 0; i <= 2; i++) {
+    // Allows up to 2 retries (3 attempts total). Optional reads can skip retries to avoid
+    // tripling failed requests in the network panel (401/403 on optional endpoints).
+    const maxAttemptIndex = skipGetRetry ? 0 : 2;
+    for (let i = 0; i <= maxAttemptIndex; i++) {
       const headers = {
         ...getAuthHeaders(_isFormData),
         ...options.headers,
@@ -314,7 +316,7 @@ export async function authenticatedFetch(url, options = {}, fetchMeta = {}) {
       if (res.ok || res.status === 404) return res;
       
       // Temporary authentication rejection (race condition) or server error -> retry
-      if ((res.status === 401 || res.status === 403 || res.status >= 500) && i < 2) {
+      if ((res.status === 401 || res.status === 403 || res.status >= 500) && i < maxAttemptIndex) {
         // Linear backoff: wait 400ms, then 800ms
         await new Promise(r => setTimeout(r, 400 * (i + 1)));
         continue;

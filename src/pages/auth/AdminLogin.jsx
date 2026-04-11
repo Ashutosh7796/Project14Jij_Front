@@ -47,7 +47,10 @@ const AdminLogin = () => {
         { email: formData.email.trim(), password: formData.password },
         'admin',
       );
-      navigate('/admin/dashboard', { replace: true });
+      const r = String(localStorage.getItem('role') || '')
+        .toUpperCase()
+        .replace(/^ROLE_/, '');
+      navigate(r === 'MANAGER' ? '/manager/dashboard' : '/admin/dashboard', { replace: true });
     } catch (err) {
       setError(err.message || 'Login failed. Please check your credentials.');
     } finally {
@@ -60,8 +63,8 @@ const AdminLogin = () => {
       <div className="auth-card">
         <div className="auth-logo">
           <img src={logo} alt="Jioji Green India Logo" />
-          <h2>Admin Login</h2>
-          <p>Welcome back! Please login to your account</p>
+          <h2>Admin / Manager login</h2>
+          <p>Welcome back! Sign in with your admin or manager account.</p>
         </div>
 
         {error && (

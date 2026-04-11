@@ -6,7 +6,11 @@ export const adminApi = {
 
   /* ================= DASHBOARD ================= */
   getDashboardStats: async () => {
-    const res = await authenticatedFetch(`${BASE_URL}/api/v1/admin/users/dashboard/stats`);
+    const res = await authenticatedFetch(
+      `${BASE_URL}/api/v1/admin/users/dashboard/stats`,
+      {},
+      { skipGetRetry: true }
+    );
     // 404 means the endpoint isn't implemented yet — return empty gracefully
     if (res.status === 404 || res.status === 401 || res.status === 403) return null;
     if (!res.ok) return null;
@@ -96,7 +100,11 @@ export const adminApi = {
 
   /* ================= FARMERS ================= */
   getAllFarmers: async (page = 0, size = 10) => {
-    const res = await authenticatedFetch(`${BASE_URL}/api/v1/employeeFarmerSurveys?page=${page}&size=${size}`);
+    const res = await authenticatedFetch(
+      `${BASE_URL}/api/v1/employeeFarmerSurveys?page=${page}&size=${size}`,
+      {},
+      { skipGetRetry: true }
+    );
     if (res.status === 401 || res.status === 403 || res.status === 404) return null;
     if (!res.ok) return null;
     const data = await res.json();

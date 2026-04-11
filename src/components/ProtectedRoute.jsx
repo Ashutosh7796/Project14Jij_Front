@@ -12,6 +12,7 @@ function isTokenExpired(token) {
 
 const ROLE_MAP = {
   ADMIN:    ['ADMIN', 'ROLE_ADMIN'],
+  MANAGER:  ['MANAGER', 'ROLE_MANAGER'],
   EMPLOYEE: ['EMPLOYEE', 'SURVEYOR', 'ROLE_EMPLOYEE', 'ROLE_SURVEYOR'],
   LAB:      ['LAB', 'LAB_TECHNICIAN', 'ROLE_LAB', 'ROLE_LAB_TECHNICIAN'],
   USER:     ['USER', 'ROLE_USER'],

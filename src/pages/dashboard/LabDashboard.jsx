@@ -17,9 +17,10 @@ import {
   Tooltip,
 } from "recharts";
  
-import { BASE_URL } from "../../config/api";
 import { useAuth } from "../../context/AuthContext";
 import "./styles/LabDashboard.css";
+import "./styles/AdminDashboards.css";
+import { LabDashboardAuthShell } from "./DashboardSkeletons";
  
 /* ================= STATIC DATA ================= */
 const STATIC_CHART_DATA = [
@@ -235,7 +236,7 @@ export default function LabDashboard() {
   const { loading: authLoading } = useAuth();
 
   if (authLoading) {
-    return <div className="loading"><div className="spinner"></div></div>;
+    return <LabDashboardAuthShell />;
   }
 
   return <LabDashboardContent />;

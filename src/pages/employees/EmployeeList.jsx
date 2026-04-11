@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { MoreVertical, Eye, Power, PowerOff, Search } from "lucide-react";
 import "./EmployeeList1.css";
 import { BASE_URL } from "../../config/api";
 import { getToken, clearAuthData } from "../../utils/auth";
+import { useRoleBasePath } from "../../hooks/useRoleBasePath";
 
 /* ===== INLINE NOTIFICATION ===== */
 const Notification = ({ notifications, onClose }) => {
@@ -34,8 +35,24 @@ const DOC_TYPES = [
   { key: "BANK_PASSBOOK", label: "Bank Passbook" },
 ];
 
+const PAGE_SIZE = 10;
+
+function mapServerEmployee(emp) {
+  if (!emp || typeof emp !== "object") return null;
+  return {
+    userId: emp.userId,
+    employeeCode: emp.employeeCode,
+    fullName: emp.name ?? emp.fullName,
+    userEmail: emp.email ?? emp.userEmail,
+    userMobile: emp.mobile ?? emp.userMobile,
+    status: emp.accountLocked ? "BLOCKED" : "ACTIVE",
+    accountLocked: !!emp.accountLocked,
+  };
+}
+
 const EmployeeList = () => {
   const navigate = useNavigate();
+  const basePath = useRoleBasePath();
   const menuRef = useRef(null);
 
   const [employees, setEmployees]       = useState([]);
@@ -43,8 +60,6 @@ const EmployeeList = () => {
   const [error, setError]               = useState("");
   const [open, setOpen]                 = useState(null);
   const [page, setPage]                 = useState(0);
-  const [totalPages, setTotalPages]     = useState(1);
-  const [roleFilter, setRoleFilter]     = useState("ALL");
   const [searchQuery, setSearchQuery]   = useState("");
   const [windowWidth, setWindowWidth]   = useState(window.innerWidth);
 
@@ -79,34 +94,70 @@ const EmployeeList = () => {
     return () => window.removeEventListener("resize", h);
   }, []);
 
-  /* ===== FETCH EMPLOYEES ===== */
+  /* ===== FETCH EMPLOYEES (all pages merged; UI paginates client-side) ===== */
   const fetchEmployees = async () => {
     setLoading(true);
     setError("");
     try {
       const token = getToken();
       if (!token) { navigate("/auth-login"); return; }
-      let url = `${BASE_URL}/api/v1/employees/getUsers`;
-      if (roleFilter && roleFilter !== "ALL") url += `?role=${roleFilter}`;
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } });
-      if (res.status === 401) { clearAuthData(); navigate("/auth-login"); return; }
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.message || "Failed to load employees");
-      if (json.data?.content) {
-        setEmployees(json.data.content.map(emp => ({
-          userId: emp.userId, employeeCode: emp.employeeCode,
-          fullName: emp.name, userEmail: emp.email, userMobile: emp.mobile,
-          status: emp.accountLocked ? "BLOCKED" : "ACTIVE", accountLocked: emp.accountLocked,
-        })));
-        setTotalPages(json.data.totalPages || 1);
-      } else {
-        setEmployees(Array.isArray(json.data) ? json.data : Array.isArray(json) ? json : []);
+
+      const merged = [];
+      const seenIds = new Set();
+      let pageIdx = 0;
+      let serverTotalPages = 1;
+      const maxPages = 50;
+
+      while (pageIdx < maxPages) {
+        const params = new URLSearchParams();
+        params.set("page", String(pageIdx));
+        params.set("size", "200");
+        const url = `${BASE_URL}/api/v1/employees/getUsers?${params.toString()}`;
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        });
+        if (res.status === 401) { clearAuthData(); navigate("/auth-login"); return; }
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.message || "Failed to load employees");
+
+        const data = json.data;
+        if (data?.content != null) {
+          let added = 0;
+          for (const emp of data.content) {
+            const id = emp?.userId;
+            if (id != null && !seenIds.has(id)) {
+              seenIds.add(id);
+              merged.push(emp);
+              added += 1;
+            }
+          }
+          serverTotalPages = Number(data.totalPages) || 1;
+          pageIdx += 1;
+          if (pageIdx >= serverTotalPages || data.content.length === 0) break;
+          if (added === 0) break;
+        } else {
+          const raw = Array.isArray(data) ? data : Array.isArray(json) ? json : [];
+          for (const emp of raw) {
+            const id = emp?.userId;
+            if (id != null && !seenIds.has(id)) {
+              seenIds.add(id);
+              merged.push(emp);
+            }
+          }
+          break;
+        }
       }
+
+      setEmployees(merged.map(mapServerEmployee).filter(Boolean));
+      setPage(0);
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchEmployees(); }, [page, roleFilter]);
+  useEffect(() => {
+    fetchEmployees();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const close = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setOpen(null); };
@@ -114,12 +165,31 @@ const EmployeeList = () => {
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
-  const filteredEmployees = employees.filter(emp => {
-    if (!searchQuery.trim()) return true;
+  const filteredEmployees = useMemo(() => {
+    if (!searchQuery.trim()) return employees;
     const q = searchQuery.toLowerCase();
-    return [emp.employeeCode, emp.fullName, emp.userEmail, emp.userMobile]
-      .some(f => f?.toString().toLowerCase().includes(q));
-  });
+    return employees.filter(emp =>
+      [emp.employeeCode, emp.fullName, emp.userEmail, emp.userMobile]
+        .some(f => f?.toString().toLowerCase().includes(q))
+    );
+  }, [employees, searchQuery]);
+
+  const computedTotalPages = Math.max(1, Math.ceil(filteredEmployees.length / PAGE_SIZE));
+
+  const paginatedEmployees = useMemo(() => {
+    const start = page * PAGE_SIZE;
+    return filteredEmployees.slice(start, start + PAGE_SIZE);
+  }, [filteredEmployees, page]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (page > 0 && page >= computedTotalPages) {
+      setPage(Math.max(0, computedTotalPages - 1));
+    }
+  }, [page, computedTotalPages]);
 
   /* ===== FETCH EMPLOYEE DETAILS ===== */
   const handleView = async (employee) => {
@@ -276,8 +346,14 @@ const EmployeeList = () => {
         <div className="top" style={{ flexDirection: isMobile ? "column" : "row", gap: 15 }}>
           <h3>Employee Management</h3>
           <div className="top-actions">
-            <button className="secondary-btn" onClick={() => navigate("/admin/attendancemanagement")}>Attendance Management</button>
-            <Link to="/admin/employees/add" className="add-btn">+ Add Employee</Link>
+            <button
+              type="button"
+              className="secondary-btn"
+              onClick={() => navigate(`${basePath}/attendance`)}
+            >
+              Attendance Management
+            </button>
+            <Link to={`${basePath}/employees/add`} className="add-btn">+ Add Employee</Link>
           </div>
         </div>
 
@@ -287,12 +363,7 @@ const EmployeeList = () => {
             <input placeholder="Search by name, email, ID..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
             <Search size={16} />
           </div>
-          <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
-            <option value="ALL">All Roles</option>
-            <option value="SURVEYOR">SURVEYOR</option>
-            <option value="LAB_TECHNICIAN">LAB_TECHNICIAN</option>
-          </select>
-          <button className="clear" onClick={() => { setRoleFilter("ALL"); setSearchQuery(""); }}>Clear</button>
+          <button className="clear" onClick={() => { setSearchQuery(""); setPage(0); }}>Clear</button>
         </div>
 
         {error && <p style={{ color: "red", padding: "10px" }}>{error}</p>}
@@ -307,7 +378,7 @@ const EmployeeList = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredEmployees.length ? filteredEmployees.map((e, i) => (
+              {paginatedEmployees.length ? paginatedEmployees.map((e, i) => (
                 <tr key={e.userId}>
                   <td><input type="checkbox" /></td>
                   <td>{e.employeeCode || `U-${e.userId}`}</td>
@@ -344,7 +415,7 @@ const EmployeeList = () => {
         <div className="pagination">
           <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>Prev</button>
           <button className="active">{page + 1}</button>
-          <button onClick={() => setPage(p => p + 1)} disabled={page + 1 >= totalPages}>Next</button>
+          <button onClick={() => setPage(p => p + 1)} disabled={page + 1 >= computedTotalPages}>Next</button>
         </div>
       </div>
 

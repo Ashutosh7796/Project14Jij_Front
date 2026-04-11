@@ -86,7 +86,9 @@
 
 table {
   width: 100%;
-  border-collapse: collapse;
+  /* separate + spacing avoids sticky thead overlapping first tbody row (Chrome border-collapse bug) */
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 thead th {
@@ -97,7 +99,8 @@ thead th {
   text-align: left;
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 2;
+  box-shadow: 0 1px 0 #c8ebc9;
 }
 
 tbody td {

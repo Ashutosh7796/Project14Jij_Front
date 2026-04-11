@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import './Employee.css';
 import { BASE_URL } from "/src/config/api.js";
 import { getToken as getCentralToken, clearAuthData } from '../../utils/auth';
+import { useRoleBasePath } from '../../hooks/useRoleBasePath';
 
 const getToken = getCentralToken;
 
@@ -37,6 +38,7 @@ const verifyTokenBeforeUpload = async (token) => {
 const AddEditEmployee = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const basePath = useRoleBasePath();
   const fieldRefs = useRef({});
 
   /* ===== STATES ===== */
@@ -349,7 +351,7 @@ const AddEditEmployee = () => {
         showNotif('Please complete registration first by clicking "Register User".', 'error');
         return;
       }
-      navigate('/admin/employees');
+      navigate(`${basePath}/employees`);
       return;
     }
 
@@ -377,7 +379,7 @@ const AddEditEmployee = () => {
       const json = await res.json();
       if (!res.ok) throw new Error(json.message || 'Failed to save updates');
       showNotif('Employee updated successfully!', 'success');
-      setTimeout(() => navigate('/admin/employees'), 1500);
+        setTimeout(() => navigate(`${basePath}/employees`), 1500);
     } catch (err) {
       showNotif(err.message, 'error');
     } finally {
@@ -449,6 +451,7 @@ const AddEditEmployee = () => {
                   className={fieldErrors['role'] ? 'input-error' : ''}
                 >
                   <option value="">Select Role</option>
+                  <option value="MANAGER">Manager</option>
                   <option value="SURVEYOR">Supervisor (Employee)</option>
                   <option value="LAB_TECHNICIAN">Lab Technician</option>
                 </select>
@@ -547,7 +550,7 @@ const AddEditEmployee = () => {
                   {isRegistered ? 'Registered ✓' : loading ? 'Registering...' : 'Register User'}
                 </button>
               )}
-              <button type="button" className="cancel-btn" onClick={() => navigate('/admin/employees')}>Cancel</button>
+              <button type="button" className="cancel-btn" onClick={() => navigate(`${basePath}/employees`)}>Cancel</button>
             </div>
 
             {/* ===== UPLOAD SECTION (Phase 2) ===== */}

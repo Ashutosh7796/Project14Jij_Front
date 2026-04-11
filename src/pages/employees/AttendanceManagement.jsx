@@ -5,10 +5,12 @@ import Toast from "../../components/Toast";
 import { useToast } from "../../hooks/useToast";
 import { BASE_URL } from "../../config/api";
 import { authenticatedFetch, clearAuthData } from "../../utils/auth";
+import { useRoleBasePath } from "../../hooks/useRoleBasePath";
 import "./AttendanceManagement.css";
 
 const AttendanceManagement = () => {
   const navigate = useNavigate();
+  const basePath = useRoleBasePath();
   const { toasts, removeToast, error: showError } = useToast();
   
   const [employees, setEmployees] = useState([]);
@@ -50,7 +52,7 @@ const AttendanceManagement = () => {
   };
 
   const handleViewAttendance = (employeeId) => {
-    navigate(`/admin/attendance/employee/${employeeId}`);
+    navigate(`${basePath}/attendance/employee/${employeeId}`);
   };
 
   const handleClearFilters = () => {

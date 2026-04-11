@@ -336,3 +336,130 @@
   align-items: center;
   justify-content: center;
 }
+
+/* ── Skeleton loading (farmer dashboard) ── */
+@keyframes ud-sk-pulse {
+  0% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0.45;
+  }
+}
+
+.ud-sk-table .dash-sk-line {
+  height: 12px;
+  border-radius: 6px;
+}
+
+.ud-sk-line--wide {
+  max-width: 200px;
+  width: 70%;
+}
+
+.ud-sk-line--short {
+  max-width: 88px;
+  width: 50%;
+}
+
+.ud-sk-section-head {
+  margin: 0 0 20px;
+}
+
+.ud-sk-section-title {
+  width: 220px;
+  height: 22px;
+  border-radius: 8px;
+}
+
+.ud-sk-product-card {
+  pointer-events: none;
+}
+
+.ud-sk-product-visual {
+  min-height: 140px;
+  border-radius: 0;
+  background: linear-gradient(90deg, #dfe8e0 0%, #eef5f0 50%, #dfe8e0 100%);
+  animation: ud-sk-pulse 1.15s ease-in-out infinite;
+}
+
+.ud-sk-product-body {
+  padding: 16px 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ud-sk-product-body .dash-sk-line {
+  height: 12px;
+  border-radius: 6px;
+}
+
+.ud-sk-line--title {
+  width: 75%;
+  max-width: 200px;
+  height: 16px;
+}
+
+.ud-sk-line--price {
+  width: 48px;
+  height: 14px;
+}
+
+.ud-sk-line--btn {
+  width: 100%;
+  height: 40px;
+  border-radius: 12px;
+  margin-top: 4px;
+}
+
+.ud-sk-auth-hero .dash-sk-line {
+  background: rgba(255, 255, 255, 0.22);
+  animation: ud-sk-pulse 1.15s ease-in-out infinite;
+}
+
+.ud-sk-eyebrow {
+  width: 120px;
+  height: 26px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+}
+
+.ud-sk-title {
+  width: min(92%, 380px);
+  height: 32px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.ud-sk-sub {
+  width: min(100%, 480px);
+  height: 14px;
+  border-radius: 6px;
+}
+
+.ud-sk-wa {
+  width: 200px;
+  height: 48px;
+  border-radius: 14px;
+  flex-shrink: 0;
+}
+
+.ud-sk-panel-h {
+  width: 140px;
+  height: 16px;
+}
+
+.ud-sk-panel-line {
+  width: 100%;
+  height: 48px;
+  border-radius: 14px;
+  margin-bottom: 10px;
+}
+
+.ud-sk-panel-line:last-child {
+  margin-bottom: 0;
+}

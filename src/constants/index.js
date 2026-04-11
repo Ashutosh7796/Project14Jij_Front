@@ -18,6 +18,7 @@ export const HTTP_STATUS = {
 // User Roles
 export const ROLES = {
   ADMIN: 'ADMIN',
+  MANAGER: 'MANAGER',
   EMPLOYEE: 'EMPLOYEE',
   SURVEYOR: 'SURVEYOR',
   LAB: 'LAB',

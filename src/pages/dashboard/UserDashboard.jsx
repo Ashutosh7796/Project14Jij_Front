@@ -5,6 +5,12 @@ import { productApi } from '../../api/productApi';
 import { orderApi } from '../../api/orderApi';
 import { useToast } from '../../hooks/useToast';
 import './UserDashboard.css';
+import './styles/AdminDashboards.css';
+import {
+  UserDashboardAuthShell,
+  UserOrdersTableSkeleton,
+  UserProductsGridSkeleton,
+} from './DashboardSkeletons';
 
 const UserDashboardContent = () => {
   const { user } = useAuth();
@@ -101,9 +107,7 @@ const UserDashboardContent = () => {
           </div>
           <div className="user-dashboard__panel-body">
             {ordersLoading ? (
-              <div className="loading">
-                <div className="spinner" />
-              </div>
+              <UserOrdersTableSkeleton rows={4} />
             ) : orders.length === 0 ? (
               <p className="user-dashboard__empty">No orders yet — browse seeds below and place your first order.</p>
             ) : (
@@ -145,9 +149,7 @@ const UserDashboardContent = () => {
       <section>
         <h2 className="user-dashboard__section-title">Available products</h2>
         {productsLoading ? (
-          <div className="loading">
-            <div className="spinner" />
-          </div>
+          <UserProductsGridSkeleton cards={6} />
         ) : (
           <div className="user-dashboard__products">
             {products?.content?.length > 0 ? (
@@ -181,13 +183,7 @@ const UserDashboard = () => {
   const { loading: authLoading } = useAuth();
 
   if (authLoading) {
-    return (
-      <div className="user-dashboard">
-        <div className="loading">
-          <div className="spinner" />
-        </div>
-      </div>
-    );
+    return <UserDashboardAuthShell />;
   }
 
   return <UserDashboardContent />;

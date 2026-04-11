@@ -17,6 +17,7 @@ import UserDashboard from './pages/dashboard/UserDashboard';
 import './styles/main.css';
 
 import AdminRoutes from './routes/AdminRoutes';
+import ManagerRoutes from './routes/ManagerRoutes';
 import EmployeeRoutes from './routes/EmployeeRoutes';
 
 import LabRoutes from './routes/LabRoutes';
@@ -60,6 +61,7 @@ function App() {
 
         {/* Role Based */}
         <Route path="/admin/*" element={<AdminRoutes />} />
+        <Route path="/manager/*" element={<ManagerRoutes />} />
         <Route path="/employee/*" element={<EmployeeRoutes />} />
 
         <Route path="/lab/*" element={<LabRoutes />} />

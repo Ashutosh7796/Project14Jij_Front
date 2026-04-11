@@ -116,6 +116,20 @@
   white-space: nowrap;
 }
 
+.brand-names {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brand-title-sub {
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.85);
+  text-transform: uppercase;
+}
+
 /* NAVIGATION */
 .sidebar-nav {
   flex: 1;

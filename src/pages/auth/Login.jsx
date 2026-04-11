@@ -30,6 +30,7 @@ function scrollToSection(id) {
 /* ── role → dashboard path (must match App.jsx routes) ── */
 function getDashboardPath(role = "") {
   const r = String(role).toUpperCase().replace(/^ROLE_/, "");
+  if (r === "MANAGER")                       return "/manager/dashboard";
   if (r === "ADMIN")                         return "/admin/dashboard";
   if (r === "EMPLOYEE" || r === "SURVEYOR")  return "/employee/dashboard";
   if (r === "LAB" || r === "LAB_TECHNICIAN") return "/lab/dashboard";

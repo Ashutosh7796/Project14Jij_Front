@@ -22,7 +22,14 @@ import {
 } from "recharts";
 
 import "./styles/EmployeeDashboard.css";
+import "./styles/AdminDashboards.css";
 import { useEffect } from "react";
+import {
+  EmployeeDashboardAuthShell,
+  EmployeeFarmersTableSkeleton,
+  PieChartAreaSkeleton,
+  StatCardsSkeleton,
+} from "./DashboardSkeletons";
 
 
 // Inner component — only mounted after auth is confirmed ready.
@@ -67,18 +74,34 @@ function EmployeeDashboardContent() {
     return `${percent}%`;
   };
 
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+
   useEffect(() => {
-    fetchRecentFarmers();
-    fetchPieChartData();
-    fetchSurveyStatusCount();
-    fetchTodayAttendance();
+    let cancelled = false;
+    const load = async () => {
+      try {
+        await Promise.all([
+          fetchRecentFarmers(),
+          fetchPieChartData(),
+          fetchSurveyStatusCount(),
+          fetchTodayAttendance(),
+        ]);
+      } finally {
+        if (!cancelled) setDashboardLoading(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const fetchTodayAttendance = async () => {
     try {
       const res = await authenticatedFetch(
         `${BASE_URL}/api/v1/attendance/me`,
-        { method: "GET" }
+        { method: "GET" },
+        { skipGetRetry: true }
       );
 
       if (!res.ok) {
@@ -317,7 +340,8 @@ function EmployeeDashboardContent() {
     try {
       const res = await authenticatedFetch(
         `${BASE_URL}/api/v1/employeeFarmerSurveys/status-count/me`,
-        { method: "GET" }
+        { method: "GET" },
+        { skipGetRetry: true }
       );
 
       // 401/404 = endpoint not available for this role — use defaults
@@ -335,7 +359,9 @@ function EmployeeDashboardContent() {
       // Backend returns 404 when no surveys exist for a status — treat as 0, not an error
       const fetchStatusCount = async (status) => {
         const res = await authenticatedFetch(
-          `${BASE_URL}/api/v1/employeeFarmerSurveys/me/status/${status}`
+          `${BASE_URL}/api/v1/employeeFarmerSurveys/me/status/${status}`,
+          {},
+          { skipGetRetry: true }
         );
         if (res.status === 404) return 0;
         if (!res.ok) return 0;
@@ -361,7 +387,8 @@ function EmployeeDashboardContent() {
     try {
       const res = await authenticatedFetch(
         `${BASE_URL}/api/v1/employeeFarmerSurveys/my`,
-        { method: "GET" }
+        { method: "GET" },
+        { skipGetRetry: true }
       );
 
       // 401/404 = endpoint not available — show empty table
@@ -548,33 +575,39 @@ function EmployeeDashboardContent() {
         </div>
       )}
 
-      <div className="stats-row">
-        <div className="stat-card total_data">
-          <div className="card-left">
-            <p>Total Data</p>
-            <VscFileSubmodule size={40} />
-          </div>
-          <h1>{total}</h1>
-        </div>
+      <div className={`stats-row${dashboardLoading ? " dash-sk-employee-stats" : ""}`}>
+        {dashboardLoading ? (
+          <StatCardsSkeleton count={3} />
+        ) : (
+          <>
+            <div className="stat-card total_data">
+              <div className="card-left">
+                <p>Total Data</p>
+                <VscFileSubmodule size={40} />
+              </div>
+              <h1>{total}</h1>
+            </div>
 
-        <div
-          className="stat-card surveys clickable"
-          onClick={handleViewHistory}
-        >
-          <div className="card-left">
-            <p>Surveys Completed</p>
-            <span style={{ fontSize: "38px" }}>📋</span>
-          </div>
-          <h1>{surveyStatusCount?.completedCount ?? 0}</h1>
-        </div>
+            <div
+              className="stat-card surveys clickable"
+              onClick={handleViewHistory}
+            >
+              <div className="card-left">
+                <p>Surveys Completed</p>
+                <span style={{ fontSize: "38px" }}>📋</span>
+              </div>
+              <h1>{surveyStatusCount?.completedCount ?? 0}</h1>
+            </div>
 
-        <div className="stat-card pending clickable" onClick={handleUpdateData}>
-          <div className="card-left">
-            <p>Pending Sync</p>
-            <span style={{ fontSize: "38px" }}>🔄</span>
-          </div>
-          <h1>{surveyStatusCount?.pendingCount ?? 0}</h1>
-        </div>
+            <div className="stat-card pending clickable" onClick={handleUpdateData}>
+              <div className="card-left">
+                <p>Pending Sync</p>
+                <span style={{ fontSize: "38px" }}>🔄</span>
+              </div>
+              <h1>{surveyStatusCount?.pendingCount ?? 0}</h1>
+            </div>
+          </>
+        )}
       </div>
 
       {/* QUICK ACTIONS - Now below stat cards */}
@@ -602,53 +635,55 @@ function EmployeeDashboardContent() {
 
       <div className="table-box">
         <h3>Recent Farmers</h3>
-        <div className="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>FARMER</th>
-                <th>VILLAGE</th>
-                <th>ACTION</th>
-                <th>DATE</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {recentFarmers.map((item, index) => (
-                <tr key={item.surveyId || index}>
-                  <td data-label="Farmer">{item.farmerName || "N/A"}</td>
-                  {/* <td data-label="Village">{item.village || "N/A"}</td> */}
-                  <td data-label="Village">
-                    <span className="village-text">{item.village || "N/A"}</span>
-                  </td>
-
-                  <td data-label="Action">
-                    {item.formStatus === "ACTIVE"
-                      ? "SURVEY FILLED"
-                      : "PENDING DATA"}
-                  </td>
-                  <td data-label="Date">
-                    {item.createdAt
-                      ? new Date(item.createdAt).toLocaleDateString()
-                      : "-"}
-                  </td>
-                </tr>
-              ))}
-
-              {/* 👇 ADD THIS BELOW map */}
-              {recentFarmers.length === 0 && (
+        {dashboardLoading ? (
+          <EmployeeFarmersTableSkeleton rows={3} />
+        ) : (
+          <div className="table-scroll">
+            <table>
+              <thead>
                 <tr>
-                  <td
-                    colSpan="4"
-                    style={{ textAlign: "center", color: "#888" }}
-                  >
-                    No recent farmers available
-                  </td>
+                  <th>FARMER</th>
+                  <th>VILLAGE</th>
+                  <th>ACTION</th>
+                  <th>DATE</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+
+              <tbody>
+                {recentFarmers.map((item, index) => (
+                  <tr key={item.surveyId || index}>
+                    <td data-label="Farmer">{item.farmerName || "N/A"}</td>
+                    <td data-label="Village">
+                      <span className="village-text">{item.village || "N/A"}</span>
+                    </td>
+
+                    <td data-label="Action">
+                      {item.formStatus === "ACTIVE"
+                        ? "SURVEY FILLED"
+                        : "PENDING DATA"}
+                    </td>
+                    <td data-label="Date">
+                      {item.createdAt
+                        ? new Date(item.createdAt).toLocaleDateString()
+                        : "-"}
+                    </td>
+                  </tr>
+                ))}
+
+                {recentFarmers.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan="4"
+                      style={{ textAlign: "center", color: "#888" }}
+                    >
+                      No recent farmers available
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="chart-box">
@@ -656,27 +691,31 @@ function EmployeeDashboardContent() {
           <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', color: '#333' }}>Farmer Survey Status</h3>
           <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>Distribution of active and inactive farmer surveys</p>
         </div>
-        <ResponsiveContainer width="100%" height={300}>
-          <PieChart>
-            <Pie
-              data={chartData}
-              dataKey="value"
-              cx="50%"
-              cy="45%"       // 🔥 IMPORTANT (moves pie up)
-              innerRadius={55}
-              outerRadius={90}
-              paddingAngle={3}
-              label={renderLabel}
-              labelLine={true}
-            >
-              {chartData.map((item, index) => (
-                <Cell key={index} fill={item.color} />
-              ))}
-            </Pie>
-            <Tooltip />
-            <Legend layout="horizontal" verticalAlign="bottom" height={36} />
-          </PieChart>
-        </ResponsiveContainer>
+        {dashboardLoading ? (
+          <PieChartAreaSkeleton height={300} />
+        ) : (
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={chartData}
+                dataKey="value"
+                cx="50%"
+                cy="45%"
+                innerRadius={55}
+                outerRadius={90}
+                paddingAngle={3}
+                label={renderLabel}
+                labelLine={true}
+              >
+                {chartData.map((item, index) => (
+                  <Cell key={index} fill={item.color} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend layout="horizontal" verticalAlign="bottom" height={36} />
+            </PieChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
       {/* LOCATION CONFIRMATION MODAL */}
@@ -1024,7 +1063,7 @@ export default function EmployeeDashboard() {
   const navigate = useNavigate();
 
   if (authLoading) {
-    return <div className="loading"><div className="spinner"></div></div>;
+    return <EmployeeDashboardAuthShell />;
   }
 
   if (!isAuthenticated) {

@@ -18,28 +18,64 @@ import {
   ClipboardList
 } from 'lucide-react';
 
+const ADMIN_MENU = [
+  { path: '/admin/dashboard',                label: 'Dashboard',                 icon: <LayoutDashboard size={20} /> },
+  { path: '/admin/employees',                label: 'Employee management',      icon: <Users size={20} /> },
+  { path: '/admin/products',                 label: 'Product & category',       icon: <Package size={20} /> },
+  { path: '/admin/orders',                   label: 'Order tracking',           icon: <ShoppingCart size={20} /> },
+  { path: '/admin/farmers',                  label: 'Farmer Registration',      icon: <MessageSquare size={20} /> },
+  { path: '/admin/farmer-registration-list', label: 'Farmer Reg. List',         icon: <ClipboardList size={20} /> },
+  { path: '/admin/lab-reports',              label: 'Lab Test Report',          icon: <FileText size={20} /> },
+];
+
+const MANAGER_MENU = [
+  { path: '/manager/dashboard',       label: 'Dashboard',            icon: <LayoutDashboard size={20} /> },
+  { path: '/manager/employees',       label: 'Employee management',  icon: <Users size={20} /> },
+  { path: '/manager/attendance',      label: 'Attendance',           icon: <Calendar size={20} /> },
+  { path: '/manager/leave-management', label: 'Leave requests',      icon: <ClipboardList size={20} /> },
+];
+
+function resolvePageTitle(pathname) {
+  if (pathname.includes('/leave-management')) return 'Leave requests';
+  if (pathname.includes('/attendance/employee')) return 'Employee attendance';
+  if (pathname.includes('/attendance')) return 'Attendance management';
+  if (pathname.includes('/employees')) return 'Employee management';
+  if (pathname.includes('/dashboard')) return 'Dashboard';
+  if (pathname.includes('/products')) return 'Product & category';
+  if (pathname.includes('/orders')) return 'Order tracking';
+  if (pathname.includes('/farmers')) return 'Farmer Registration';
+  if (pathname.includes('/farmer-registration-list')) return 'Farmer Reg. List';
+  if (pathname.includes('/lab-reports')) return 'Lab Test Report';
+  return 'Dashboard';
+}
+
 const AdminLayout = () => {
   const [isExpanded, setIsExpanded] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuth();
 
+  const isManagerPortal = location.pathname.startsWith('/manager');
+  const menuItems = isManagerPortal ? MANAGER_MENU : ADMIN_MENU;
+
   const handleLogout = async () => {
     await logout();
     navigate('/', { replace: true });
   };
 
-  const menuItems = [
-    { path: '/admin/dashboard',               label: 'Dashboard',                icon: <LayoutDashboard size={20} /> },
-    { path: '/admin/employees',               label: 'Employee management',       icon: <Users size={20} /> },
-    { path: '/admin/products',                label: 'Product & category',        icon: <Package size={20} /> },
-    { path: '/admin/orders',                  label: 'Order tracking',            icon: <ShoppingCart size={20} /> },
-    { path: '/admin/farmers',                 label: 'Farmer Registration',       icon: <MessageSquare size={20} /> },
-    { path: '/admin/farmer-registration-list', label: 'Farmer Reg. List',         icon: <ClipboardList size={20} /> },
-    { path: '/admin/lab-reports',             label: 'Lab Test Report',           icon: <FileText size={20} /> },
-  ];
+  const navIsActive = (itemPath) => {
+    if (location.pathname === itemPath) return true;
+    if (itemPath.endsWith('/employees') && location.pathname.startsWith(itemPath)) return true;
+    if (itemPath.endsWith('/attendance') && location.pathname.startsWith(itemPath)) return true;
+    if (itemPath.endsWith('/farmers') && location.pathname.startsWith(itemPath)) return true;
+    if (itemPath.endsWith('/products') && location.pathname.startsWith(itemPath)) return true;
+    if (itemPath.endsWith('/orders') && location.pathname.startsWith(itemPath)) return true;
+    if (itemPath.endsWith('/lab-reports') && location.pathname.startsWith(itemPath)) return true;
+    if (itemPath.includes('farmer-registration') && location.pathname.startsWith(itemPath)) return true;
+    return false;
+  };
 
-  const currentPage = menuItems.find(item => item.path === location.pathname)?.label || 'Dashboard';
+  const currentPage = resolvePageTitle(location.pathname);
 
   return (
     <div className="admin-container">
@@ -59,6 +95,9 @@ const AdminLayout = () => {
             {isExpanded && (
               <div className="brand-names">
                 <span className="brand-title-main">JIOJI GREEN INDIA</span>
+                {isManagerPortal && (
+                  <span className="brand-title-sub">Manager portal</span>
+                )}
               </div>
             )}
           </div>
@@ -66,7 +105,7 @@ const AdminLayout = () => {
 
         <nav className="sidebar-nav">
           {menuItems.map((item) => {
-            const isActive = location.pathname === item.path;
+            const isActive = navIsActive(item.path);
             return (
               <Link
                 key={item.path}
