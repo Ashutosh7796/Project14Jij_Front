@@ -1,91 +1,96 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
 import { clearAuthData } from "../utils/auth";
-import {
-  LayoutDashboard,
-  History,
-  User,
-  LogOut,
-  Menu,
-  X,
-} from "lucide-react";
+import { LayoutDashboard, User, LogOut, Menu, X } from "lucide-react";
 import { FaFlask } from "react-icons/fa";
 import logo from "../assets/Jioji_logo.png";
 import "../styles/LabLayout.css";
+import { useIsMobileDashboard } from "../hooks/useMediaQuery";
 
 const LabLayout = () => {
+  const isMobile = useIsMobileDashboard(768);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const dropdownRef = useRef(null);
+  const userBtnRef = useRef(null);
 
   const userEmail = localStorage.getItem("userEmail") || "Lab User";
   const userName = userEmail.split("@")[0];
 
-  // Check if mobile on mount and resize
   useEffect(() => {
-    const checkIfMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
+    if (!isMobile) setMobileDrawerOpen(false);
+  }, [isMobile]);
+
+  useEffect(() => {
+    const onClickOutside = (e) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target) &&
+        userBtnRef.current &&
+        !userBtnRef.current.contains(e.target)
+      ) {
+        setDropdownOpen(false);
+      }
     };
-    
-    checkIfMobile();
-    window.addEventListener('resize', checkIfMobile);
-    
-    return () => window.removeEventListener('resize', checkIfMobile);
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
   const handleLogout = () => {
+    setMobileDrawerOpen(false);
     clearAuthData();
     navigate("/");
   };
 
   const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
+    if (isMobile) setMobileDrawerOpen((p) => !p);
+    else setSidebarOpen((p) => !p);
   };
 
-  const toggleDropdown = () => setDropdownOpen(!dropdownOpen);
-
-  // Close sidebar when clicking on a link (mobile only)
-  const handleNavClick = () => {
-    if (isMobile) {
-      setSidebarOpen(false);
-    }
-  };
+  const closeMobileDrawer = () => setMobileDrawerOpen(false);
+  const toggleDropdown = () => setDropdownOpen((p) => !p);
 
   const menuItems = [
-    {
-      path: "/lab/dashboard",
-      icon: LayoutDashboard,
-      label: "Dashboard",
-    },
-    {
-      path: "/lab/report",
-      icon: FaFlask,
-      label: "Lab Reports",
-    },
+    { path: "/lab/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { path: "/lab/report", icon: FaFlask, label: "Lab Reports" },
   ];
 
   const isActive = (path) => location.pathname === path;
 
+  const sidebarClass = [
+    "lab-sidebar",
+    !isMobile && (sidebarOpen ? "lab-sidebar-open" : "lab-sidebar-closed"),
+    isMobile && "lab-sidebar-mobile",
+    isMobile && mobileDrawerOpen && "lab-mobile-open",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const mainClass = [
+    "lab-main-content",
+    !isMobile ? (sidebarOpen ? "lab-content-open" : "lab-content-closed") : "lab-main-content--mobile",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <div className="lab-layout-wrapper">
-      {/* ================= SIDEBAR ================= */}
-      <aside
-        className={`lab-sidebar ${
-          sidebarOpen ? "lab-sidebar-open" : "lab-sidebar-closed"
-        }`}
-      >
+      {isMobile && mobileDrawerOpen && (
+        <div className="lab-sidebar-backdrop" onClick={closeMobileDrawer} aria-hidden="true" />
+      )}
+
+      <aside className={sidebarClass}>
         <div className="lab-sidebar-header">
           <div className="lab-logo-container">
             <img src={logo} alt="Logo" className="lab-logo" />
-            {sidebarOpen && (
-              <span className="lab-logo-text">Lab Panel</span>
-            )}
+            {(sidebarOpen || isMobile) && <span className="lab-logo-text">Lab Panel</span>}
           </div>
 
-          <button className="lab-toggle-btn" onClick={toggleSidebar}>
-            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+          <button type="button" className="lab-toggle-btn" onClick={toggleSidebar} aria-label="Toggle menu">
+            {(isMobile ? mobileDrawerOpen : sidebarOpen) ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
 
@@ -96,85 +101,60 @@ const LabLayout = () => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`lab-nav-item ${
-                  isActive(item.path) ? "lab-nav-active" : ""
-                }`}
-                onClick={handleNavClick}
+                className={`lab-nav-item ${isActive(item.path) ? "lab-nav-active" : ""}`}
+                onClick={() => isMobile && closeMobileDrawer()}
               >
                 <Icon size={20} />
-                {sidebarOpen && <span>{item.label}</span>}
+                {(sidebarOpen || isMobile) && <span>{item.label}</span>}
               </Link>
             );
           })}
         </nav>
 
         <div className="lab-sidebar-footer">
-          <button className="lab-logout-btn" onClick={handleLogout}>
+          <button
+            type="button"
+            className="lab-logout-btn"
+            onClick={() => {
+              closeMobileDrawer();
+              handleLogout();
+            }}
+          >
             <LogOut size={20} />
-            {sidebarOpen && <span>Logout</span>}
+            {(sidebarOpen || isMobile) && <span>Logout</span>}
           </button>
         </div>
       </aside>
 
-      {/* Backdrop for mobile sidebar */}
-      {isMobile && sidebarOpen && (
-        <div 
-          className="lab-sidebar-backdrop" 
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* ================= MAIN CONTENT ================= */}
-      <div
-        className={`lab-main-content ${
-          sidebarOpen ? "lab-content-open" : "lab-content-closed"
-        }`}
-      >
+      <div className={mainClass}>
         <header className="lab-top-header">
           <div className="lab-header-left">
-            {isMobile && (
-              <button className="lab-mobile-menu-btn" onClick={toggleSidebar}>
-                <Menu size={24} />
-              </button>
-            )}
+            <button
+              type="button"
+              className={`lab-mobile-menu-btn ${isMobile ? "lab-mobile-menu-btn--visible" : ""}`}
+              onClick={() => setMobileDrawerOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu size={24} />
+            </button>
             <h1>Lab Portal</h1>
           </div>
 
           <div className="lab-header-right">
             <div className="lab-user-menu">
-              <button className="lab-user-btn" onClick={toggleDropdown}>
+              <button ref={userBtnRef} type="button" className="lab-user-btn" onClick={toggleDropdown}>
                 <User size={20} />
                 <span>{userName}</span>
               </button>
 
               {dropdownOpen && (
-                <>
-                  <div className="lab-dropdown-menu">
-                    <div className="lab-dropdown-email">
-                      {userEmail}
-                    </div>
-
-                    <button
-                      className="lab-dropdown-logout"
-                      onClick={handleLogout}
-                    >
-                      <LogOut size={16} />
-                      <span>Logout</span>
-                    </button>
-                  </div>
-                  {/* Click outside to close dropdown */}
-                  <div 
-                    style={{
-                      position: 'fixed',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      zIndex: 999
-                    }} 
-                    onClick={() => setDropdownOpen(false)}
-                  />
-                </>
+                <div ref={dropdownRef} className="lab-dropdown-menu">
+                  <div className="lab-dropdown-email">{userEmail}</div>
+                  <button type="button" className="lab-dropdown-logout" onClick={handleLogout}>
+                    <LogOut size={16} />
+                    <span>Logout</span>
+                  </button>
+                </div>
               )}
             </div>
           </div>

@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import './Employee.css';
 import { BASE_URL } from "/src/config/api.js";
 import { getToken as getCentralToken, clearAuthData } from '../../utils/auth';
 import { useRoleBasePath } from '../../hooks/useRoleBasePath';
+import { isManagerRole } from '../../utils/rolePaths';
 
 const getToken = getCentralToken;
 
@@ -60,6 +62,8 @@ const AddEditEmployee = () => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   /* ===== NOTIFICATION HELPERS ===== */
   const showNotif = useCallback((message, type = 'info') => {
@@ -225,9 +229,19 @@ const AddEditEmployee = () => {
         acceptTerms: formData.acceptTerms, acceptPrivacyPolicy: formData.acceptPrivacyPolicy
       };
 
+      const token = getToken();
+      if (!token) {
+        showNotif('Authentication token not found. Please login again.', 'error');
+        navigate('/auth-login');
+        return;
+      }
+
       const res = await fetch(`${BASE_URL}/api/auth/v1/register`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(payload),
       });
       const json = await res.json();
@@ -445,16 +459,29 @@ const AddEditEmployee = () => {
             <div className="grid-2">
               <div className="field">
                 <label>User Type<span>*</span></label>
+                {isManagerRole() && id && formData.role === 'MANAGER' ? (
+                  <>
+                    <input
+                      readOnly
+                      value="Manager"
+                      style={{ background: '#f3f4f6', cursor: 'not-allowed' }}
+                    />
+                    <p style={{ fontSize: 11, color: '#6b7280', marginTop: 6 }}>
+                      Manager accounts can only be changed from the admin portal.
+                    </p>
+                  </>
+                ) : (
                 <select
                   name="role" value={formData.role} onChange={handleChange}
                   ref={el => fieldRefs.current['role'] = el}
                   className={fieldErrors['role'] ? 'input-error' : ''}
                 >
                   <option value="">Select Role</option>
-                  <option value="MANAGER">Manager</option>
+                  {!isManagerRole() && <option value="MANAGER">Manager</option>}
                   <option value="SURVEYOR">Supervisor (Employee)</option>
                   <option value="LAB_TECHNICIAN">Lab Technician</option>
                 </select>
+                )}
                 {fieldErrors['role'] && <span className="field-error-msg">{fieldErrors['role']}</span>}
               </div>
               {field('companyName', 'Company Name', false, { placeholder: 'Company Name' })}
@@ -496,12 +523,26 @@ const AddEditEmployee = () => {
                 <div className="grid-2">
                   <div className="field">
                     <label>Password<span>*</span></label>
-                    <input
-                      type="password" name="password" value={formData.password}
-                      onChange={handleChange} placeholder="Min. 8 characters"
-                      ref={el => fieldRefs.current['password'] = el}
-                      className={fieldErrors['password'] ? 'input-error' : ''}
-                    />
+                    <div className="password-input-wrap">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        placeholder="Min. 8 characters"
+                        ref={el => fieldRefs.current['password'] = el}
+                        className={fieldErrors['password'] ? 'input-error' : ''}
+                        autoComplete="new-password"
+                      />
+                      <button
+                        type="button"
+                        className="password-toggle-btn"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        onClick={() => setShowPassword((v) => !v)}
+                      >
+                        {showPassword ? <EyeOff size={18} aria-hidden /> : <Eye size={18} aria-hidden />}
+                      </button>
+                    </div>
                     {fieldErrors['password'] && <span className="field-error-msg">{fieldErrors['password']}</span>}
                     {formData.password && (
                       <span className={`pw-strength ${formData.password.length >= 8 ? 'pw-ok' : 'pw-weak'}`}>
@@ -511,12 +552,26 @@ const AddEditEmployee = () => {
                   </div>
                   <div className="field">
                     <label>Confirm Password<span>*</span></label>
-                    <input
-                      type="password" name="confirmPassword" value={formData.confirmPassword}
-                      onChange={handleChange} placeholder="Re-enter password"
-                      ref={el => fieldRefs.current['confirmPassword'] = el}
-                      className={fieldErrors['confirmPassword'] ? 'input-error' : (formData.confirmPassword && formData.password === formData.confirmPassword ? 'input-success' : '')}
-                    />
+                    <div className="password-input-wrap">
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
+                        placeholder="Re-enter password"
+                        ref={el => fieldRefs.current['confirmPassword'] = el}
+                        className={fieldErrors['confirmPassword'] ? 'input-error' : (formData.confirmPassword && formData.password === formData.confirmPassword ? 'input-success' : '')}
+                        autoComplete="new-password"
+                      />
+                      <button
+                        type="button"
+                        className="password-toggle-btn"
+                        aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                        onClick={() => setShowConfirmPassword((v) => !v)}
+                      >
+                        {showConfirmPassword ? <EyeOff size={18} aria-hidden /> : <Eye size={18} aria-hidden />}
+                      </button>
+                    </div>
                     {fieldErrors['confirmPassword'] && <span className="field-error-msg">{fieldErrors['confirmPassword']}</span>}
                     {formData.confirmPassword && !fieldErrors['confirmPassword'] && formData.password === formData.confirmPassword && (
                       <span className="pw-strength pw-ok">✓ Passwords match</span>

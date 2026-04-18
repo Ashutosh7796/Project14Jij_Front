@@ -22,17 +22,23 @@ export const authApi = {
 
   /* ===================== REGISTER ===================== */
   register: async (registerData) => {
+    const digits = String(registerData.phone ?? "").replace(/\D/g, "");
+    const mobile10 = digits.length >= 10 ? digits.slice(-10) : digits;
+
     const payload = {
-      firstName:    registerData.name?.split(" ")[0] || "",
-      lastName:     registerData.name?.split(" ").slice(1).join(" ") || "",
-      email:        registerData.email,
-      password:     registerData.password,
-      mobileNumber: Number(registerData.phone),
-      role:         "USER",
+      firstName: registerData.firstName?.trim() || "",
+      lastName: registerData.lastName?.trim() || "",
+      email: registerData.email?.trim(),
+      password: registerData.password,
+      confirmPassword: registerData.confirmPassword,
+      mobileNumber: Number(mobile10),
+      role: "USER",
+      acceptTerms: Boolean(registerData.acceptTerms),
+      acceptPrivacyPolicy: Boolean(registerData.acceptPrivacyPolicy),
     };
 
     const response = await enhancedFetch(
-      `${BASE_URL}/api/v1/auth/register`,
+      `${BASE_URL}/api/auth/v1/register`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

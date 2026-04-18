@@ -1,7 +1,15 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Search, Eye, ArrowLeft, Users, ChevronLeft, ChevronRight, RefreshCw, AlertCircle, ClipboardList } from "lucide-react";
 import { BASE_URL } from "../../config/api";
 import { authenticatedFetch } from "../../utils/auth";
+import { useCachedFetch } from "../../hooks/useCachedFetch";
+import {
+  CACHE_TAGS,
+  SWR_FRESH_MS,
+  SWR_STALE_MS,
+  cacheKeyFarmerRegListEmployees,
+  cacheKeyFarmerRegListFarmers,
+} from "../../cache/cacheKeys";
 import "./FarmerRegistrationList.css";
 
 /* ─── Inline Toast ─────────────────────────────────────── */
@@ -40,22 +48,11 @@ const FarmerRegistrationList = () => {
   const [view, setView] = useState("employees");
   const [selectedEmployee, setSelectedEmployee] = useState(null);
 
-  /* ── Employees state ── */
-  const [employees, setEmployees] = useState([]);
-  const [empLoading, setEmpLoading] = useState(true);
-  const [empError, setEmpError] = useState("");
   const [empPage, setEmpPage] = useState(0);
-  const [empTotalPages, setEmpTotalPages] = useState(1);
   const [empSearch, setEmpSearch] = useState("");
   const EMP_PAGE_SIZE = 10;
 
-  /* ── Farmers state ── */
-  const [farmers, setFarmers] = useState([]);
-  const [farmerLoading, setFarmerLoading] = useState(false);
-  const [farmerError, setFarmerError] = useState("");
   const [farmerPage, setFarmerPage] = useState(0);
-  const [farmerTotalPages, setFarmerTotalPages] = useState(1);
-  const [farmerTotalElements, setFarmerTotalElements] = useState(0);
   const [farmerSearch, setFarmerSearch] = useState("");
   const FARMER_PAGE_SIZE = 10;
 
@@ -63,101 +60,117 @@ const FarmerRegistrationList = () => {
   const [toast, setToast] = useState(null);
   const showToast = useCallback((message, type = "error") => setToast({ message, type }), []);
 
-  /* ════════ FETCH EMPLOYEES ════════ */
+  const listPersistOpts = useMemo(
+    () => ({
+      swr: true,
+      freshMs: SWR_FRESH_MS,
+      staleMs: SWR_STALE_MS,
+      persistSession: true,
+    }),
+    []
+  );
+
   const fetchEmployees = useCallback(async () => {
-    setEmpLoading(true);
-    setEmpError("");
-    try {
-      const res = await authenticatedFetch(
-        `${BASE_URL}/api/v1/employees/getAll/surv?page=${empPage}&size=${EMP_PAGE_SIZE}`
-      );
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        throw new Error(json.message || `Error ${res.status}`);
-      }
-      const json = await res.json();
-      const data = json.data ?? json;
-
-      if (data?.content && Array.isArray(data.content)) {
-        setEmployees(data.content);
-        setEmpTotalPages(data.totalPages ?? 1);
-      } else if (Array.isArray(data)) {
-        setEmployees(data);
-        setEmpTotalPages(1);
-      } else {
-        setEmployees([]);
-        setEmpTotalPages(1);
-      }
-    } catch (err) {
-      setEmpError(err.message);
-      showToast(err.message);
-    } finally {
-      setEmpLoading(false);
+    const res = await authenticatedFetch(
+      `${BASE_URL}/api/v1/employees/getAll/surv?page=${empPage}&size=${EMP_PAGE_SIZE}`
+    );
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(json.message || `Error ${res.status}`);
     }
-  }, [empPage, showToast]);
+    const json = await res.json();
+    const data = json.data ?? json;
 
-  useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
-
-  /* ════════ FETCH FARMERS FOR AN EMPLOYEE ════════ */
-  const fetchFarmers = useCallback(async (userId, page = 0) => {
-    setFarmerLoading(true);
-    setFarmerError("");
-    try {
-      const res = await authenticatedFetch(
-        `${BASE_URL}/api/v1/employeeFarmerSurveys/user/${userId}?page=${page}&size=${FARMER_PAGE_SIZE}`
-      );
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        throw new Error(json.message || `Error ${res.status}`);
-      }
-      const json = await res.json();
-      const data = json.data ?? json;
-
-      if (data?.content && Array.isArray(data.content)) {
-        setFarmers(data.content);
-        setFarmerTotalPages(data.totalPages ?? 1);
-        setFarmerTotalElements(data.totalElements ?? data.content.length);
-      } else if (Array.isArray(data)) {
-        setFarmers(data);
-        setFarmerTotalPages(1);
-        setFarmerTotalElements(data.length);
-      } else {
-        setFarmers([]);
-        setFarmerTotalPages(1);
-        setFarmerTotalElements(0);
-      }
-    } catch (err) {
-      setFarmerError(err.message);
-      showToast(err.message);
-    } finally {
-      setFarmerLoading(false);
+    if (data?.content && Array.isArray(data.content)) {
+      return { list: data.content, totalPages: data.totalPages ?? 1 };
     }
-  }, [showToast]);
+    if (Array.isArray(data)) {
+      return { list: data, totalPages: 1 };
+    }
+    return { list: [], totalPages: 1 };
+  }, [empPage]);
 
-  /* ── When farmerPage changes while viewing an employee ── */
+  const {
+    data: empPayload,
+    loading: empLoading,
+    error: empError,
+    refetch: refetchEmployees,
+  } = useCachedFetch(cacheKeyFarmerRegListEmployees(empPage, EMP_PAGE_SIZE), fetchEmployees, {
+    ...listPersistOpts,
+    tags: [CACHE_TAGS.FARMER_REG_EMPLOYEES],
+  });
+
+  const employees = empPayload?.list ?? [];
+  const empTotalPages = empPayload?.totalPages ?? 1;
+
+  const selectedUid =
+    selectedEmployee?.userId ?? selectedEmployee?.id ?? null;
+  const farmerCacheKey =
+    view === "farmers" && selectedUid != null
+      ? cacheKeyFarmerRegListFarmers(selectedUid, farmerPage, FARMER_PAGE_SIZE)
+      : null;
+
+  const fetchFarmersPayload = useCallback(async () => {
+    const userId = selectedEmployee?.userId ?? selectedEmployee?.id;
+    if (userId == null) {
+      return { list: [], totalPages: 1, totalElements: 0 };
+    }
+    const res = await authenticatedFetch(
+      `${BASE_URL}/api/v1/employeeFarmerSurveys/user/${userId}?page=${farmerPage}&size=${FARMER_PAGE_SIZE}`
+    );
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(json.message || `Error ${res.status}`);
+    }
+    const json = await res.json();
+    const data = json.data ?? json;
+
+    if (data?.content && Array.isArray(data.content)) {
+      return {
+        list: data.content,
+        totalPages: data.totalPages ?? 1,
+        totalElements: data.totalElements ?? data.content.length,
+      };
+    }
+    if (Array.isArray(data)) {
+      return { list: data, totalPages: 1, totalElements: data.length };
+    }
+    return { list: [], totalPages: 1, totalElements: 0 };
+  }, [selectedEmployee, farmerPage]);
+
+  const {
+    data: farmerPayload,
+    loading: farmerLoading,
+    error: farmerError,
+    refetch: refetchFarmers,
+  } = useCachedFetch(farmerCacheKey, fetchFarmersPayload, {
+    ...listPersistOpts,
+    tags: [CACHE_TAGS.FARMER_REG_FARMERS],
+  });
+
+  const farmers = farmerPayload?.list ?? [];
+  const farmerTotalPages = farmerPayload?.totalPages ?? 1;
+  const farmerTotalElements = farmerPayload?.totalElements ?? 0;
+
   useEffect(() => {
-    if (view === "farmers" && selectedEmployee) {
-      fetchFarmers(selectedEmployee.userId ?? selectedEmployee.id, farmerPage);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [farmerPage]);
+    if (empError) showToast(empError);
+  }, [empError, showToast]);
+
+  useEffect(() => {
+    if (farmerError) showToast(farmerError);
+  }, [farmerError, showToast]);
 
   /* ════════ HANDLERS ════════ */
   const handleViewEmployee = (emp) => {
     setSelectedEmployee(emp);
     setFarmerPage(0);
-    setFarmers([]);
-    setFarmerError("");
     setFarmerSearch("");
     setView("farmers");
-    fetchFarmers(emp.userId ?? emp.id, 0);
   };
 
   const handleBack = () => {
     setView("employees");
     setSelectedEmployee(null);
-    setFarmers([]);
-    setFarmerError("");
   };
 
   /* ── Client-side search filter ── */
@@ -232,8 +245,9 @@ const FarmerRegistrationList = () => {
             <AlertCircle size={40} />
             <p>{farmerError}</p>
             <button
+              type="button"
               className="frl-retry-btn"
-              onClick={() => fetchFarmers(selectedEmployee.userId ?? selectedEmployee.id, farmerPage)}
+              onClick={() => void refetchFarmers()}
             >
               <RefreshCw size={15} /> Retry
             </button>
@@ -345,7 +359,12 @@ const FarmerRegistrationList = () => {
           </h2>
           <p className="frl-subtitle">View farmers registered by each employee</p>
         </div>
-        <button className="frl-refresh-btn" onClick={fetchEmployees} title="Refresh">
+        <button
+          type="button"
+          className="frl-refresh-btn"
+          onClick={() => void refetchEmployees()}
+          title="Refresh"
+        >
           <RefreshCw size={16} />
         </button>
       </div>
@@ -373,7 +392,7 @@ const FarmerRegistrationList = () => {
         <div className="frl-state-center frl-state--error">
           <AlertCircle size={40} />
           <p>{empError}</p>
-          <button className="frl-retry-btn" onClick={fetchEmployees}>
+          <button type="button" className="frl-retry-btn" onClick={() => void refetchEmployees()}>
             <RefreshCw size={15} /> Retry
           </button>
         </div>

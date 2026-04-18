@@ -1,8 +1,18 @@
 import React, { useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useFetch } from '../../hooks/useFetch';
+import { useCachedFetch } from '../../hooks/useCachedFetch';
 import { productApi } from '../../api/productApi';
 import { orderApi } from '../../api/orderApi';
+import { invalidateKey } from '../../cache/requestCache';
+import {
+  CACHE_TAGS,
+  DEFAULT_TTL_MS,
+  SWR_FRESH_MS,
+  SWR_STALE_MS,
+  cacheKeyProductsList,
+  cacheKeyOrdersForUser,
+} from '../../cache/cacheKeys';
 import { useToast } from '../../hooks/useToast';
 import './UserDashboard.css';
 import './styles/AdminDashboards.css';
@@ -13,8 +23,14 @@ import {
 } from './DashboardSkeletons';
 
 const UserDashboardContent = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const { showToast, ToastComponent } = useToast();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/auth-login', { replace: true });
+  };
 
   const fetchProducts = useCallback(() => productApi.getAllProducts(), []);
   const fetchOrders = useCallback(
@@ -22,13 +38,27 @@ const UserDashboardContent = () => {
     [user?.userId]
   );
 
-  const { data: products, loading: productsLoading } = useFetch(fetchProducts);
-  const { data: myOrders, loading: ordersLoading } = useFetch(fetchOrders, [user?.userId]);
+  const { data: products, loading: productsLoading } = useCachedFetch(cacheKeyProductsList(), fetchProducts, {
+    swr: true,
+    freshMs: SWR_FRESH_MS,
+    staleMs: SWR_STALE_MS,
+    ttlMs: DEFAULT_TTL_MS,
+    tags: [CACHE_TAGS.PRODUCTS],
+  });
+
+  const ordersCacheKey = user?.userId ? cacheKeyOrdersForUser(user.userId) : null;
+  const { data: myOrders, loading: ordersLoading } = useCachedFetch(ordersCacheKey, fetchOrders, {
+    swr: true,
+    freshMs: SWR_FRESH_MS,
+    staleMs: SWR_STALE_MS,
+    ttlMs: 45_000,
+    tags: [CACHE_TAGS.ORDERS_USER],
+  });
 
   const orders = myOrders || [];
 
   const openWhatsApp = (msg) => {
-    const phone = '919000000000';
+    const phone = '919175312722';
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
@@ -49,35 +79,69 @@ const UserDashboardContent = () => {
         ],
       };
       await orderApi.createOrder(payload);
+      if (user?.userId) invalidateKey(cacheKeyOrdersForUser(user.userId));
       showToast(`Order placed successfully for ${product.productName}! Our team will contact you for payment.`, 'success');
     } catch (error) {
       showToast('Failed to place order: ' + error.message, 'error');
     }
   };
 
-  const displayName = user?.firstName || user?.email?.split('@')[0] || 'Farmer';
+  const displayName =
+    [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() ||
+    user?.firstName ||
+    user?.email?.split('@')[0] ||
+    'Farmer';
 
   return (
     <div className="user-dashboard">
       <header className="user-dashboard__hero">
         <div className="user-dashboard__hero-inner">
           <span className="user-dashboard__eyebrow">Your farm hub</span>
-          <h1 className="user-dashboard__title">Welcome back, {displayName}</h1>
+          <h1 className="user-dashboard__title">Welcome, {displayName}</h1>
           <p className="user-dashboard__subtitle">
             Explore certified seeds, track orders, and reach our team on WhatsApp for soil reports and survey support.
           </p>
         </div>
-        <button
-          type="button"
-          className="user-dashboard__wa"
-          onClick={() => openWhatsApp('Hello, I need assistance with my farm.')}
-        >
-          <span aria-hidden>💬</span> Chat on WhatsApp
-        </button>
+        <div className="user-dashboard__hero-actions">
+          <button
+            type="button"
+            className="user-dashboard__wa"
+            onClick={() => openWhatsApp('Hello, I need assistance with my farm.')}
+          >
+            <span aria-hidden>💬</span> Chat on WhatsApp
+          </button>
+          <button type="button" className="user-dashboard__logout" onClick={handleLogout}>
+            Log out
+          </button>
+        </div>
       </header>
 
+      <nav className="user-dashboard__welcome-nav" aria-label="Dashboard shortcuts">
+        <a href="#user-dashboard-products" className="user-dashboard__welcome-card">
+          <span className="user-dashboard__welcome-card-icon" aria-hidden>
+            🌱
+          </span>
+          <h3 className="user-dashboard__welcome-card-title">All products</h3>
+          <p className="user-dashboard__welcome-card-desc">Browse seeds and place an order in one tap.</p>
+        </a>
+        <a href="#user-dashboard-orders" className="user-dashboard__welcome-card">
+          <span className="user-dashboard__welcome-card-icon" aria-hidden>
+            📦
+          </span>
+          <h3 className="user-dashboard__welcome-card-title">My orders</h3>
+          <p className="user-dashboard__welcome-card-desc">See status for everything you have ordered.</p>
+        </a>
+        <a href="#user-dashboard-support" className="user-dashboard__welcome-card">
+          <span className="user-dashboard__welcome-card-icon" aria-hidden>
+            🛟
+          </span>
+          <h3 className="user-dashboard__welcome-card-title">Help &amp; reports</h3>
+          <p className="user-dashboard__welcome-card-desc">Soil reports, surveys, and quick WhatsApp support.</p>
+        </a>
+      </nav>
+
       <div className="user-dashboard__grid">
-        <section className="user-dashboard__panel">
+        <section id="user-dashboard-support" className="user-dashboard__panel user-dashboard__anchor-target">
           <div className="user-dashboard__panel-head">
             <h2>Quick support</h2>
           </div>
@@ -101,7 +165,7 @@ const UserDashboardContent = () => {
           </div>
         </section>
 
-        <section className="user-dashboard__panel">
+        <section id="user-dashboard-orders" className="user-dashboard__panel user-dashboard__anchor-target">
           <div className="user-dashboard__panel-head">
             <h2>Recent orders</h2>
           </div>
@@ -146,7 +210,7 @@ const UserDashboardContent = () => {
         </section>
       </div>
 
-      <section>
+      <section id="user-dashboard-products" className="user-dashboard__anchor-target">
         <h2 className="user-dashboard__section-title">Available products</h2>
         {productsLoading ? (
           <UserProductsGridSkeleton cards={6} />

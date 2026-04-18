@@ -1,7 +1,13 @@
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useFetch } from '../../hooks/useFetch';
+import { useCachedFetch } from '../../hooks/useCachedFetch';
 import { adminApi } from '../../api/adminApi';
+import {
+  CACHE_TAGS,
+  SWR_FRESH_MS,
+  SWR_STALE_MS,
+  cacheKeyAdminOrdersList,
+} from '../../cache/cacheKeys';
 import { Search, MoreVertical, Eye, Edit, Trash2 } from 'lucide-react';
 import './Order.css';
 
@@ -58,7 +64,21 @@ const dummyOrders = [
 ];
 
 const OrderList = () => {
-  const { data: orders, loading } = useFetch(() => adminApi.getAllOrders());
+  const fetchOrders = useCallback(() => adminApi.getAllOrders(0, 200), []);
+  const orderCacheOpts = useMemo(
+    () => ({
+      swr: true,
+      freshMs: SWR_FRESH_MS,
+      staleMs: SWR_STALE_MS,
+      tags: [CACHE_TAGS.ADMIN_ORDERS],
+    }),
+    []
+  );
+  const { data: orders, loading } = useCachedFetch(
+    cacheKeyAdminOrdersList(0, 200),
+    fetchOrders,
+    orderCacheOpts
+  );
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [customerFilter, setCustomerFilter] = useState('');

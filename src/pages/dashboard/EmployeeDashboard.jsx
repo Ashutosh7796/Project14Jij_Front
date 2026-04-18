@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { BsStopwatch } from "react-icons/bs";
 import { SlCalender } from "react-icons/sl";
@@ -11,6 +11,16 @@ import { formatTo12Hour } from "../../utils/formatTime";
 import { BASE_URL } from "../../config/api";
 import { authenticatedFetch } from "../../utils/auth";
 import { useAuth } from "../../context/AuthContext";
+import { useCachedFetch } from "../../hooks/useCachedFetch";
+import {
+  CACHE_TAGS,
+  SWR_FRESH_MS,
+  SWR_STALE_MS,
+  cacheKeyEmployeeAttendanceMe,
+  cacheKeyEmployeeSurveyStatusCountMe,
+  cacheKeyEmployeeSurveyMeStatus,
+  cacheKeyEmployeeRecentSurveys,
+} from "../../cache/cacheKeys";
 
 import {
   PieChart,
@@ -23,7 +33,6 @@ import {
 
 import "./styles/EmployeeDashboard.css";
 import "./styles/AdminDashboards.css";
-import { useEffect } from "react";
 import {
   EmployeeDashboardAuthShell,
   EmployeeFarmersTableSkeleton,
@@ -36,12 +45,6 @@ import {
 function EmployeeDashboardContent() {
   const navigate = useNavigate();
   const { toasts, removeToast, success, error: showError } = useToast();
-  const [chartData, setChartData] = useState([]);
-  const [recentFarmers, setRecentFarmers] = useState([]);
-  const [surveyStatusCount, setSurveyStatusCount] = useState(null);
-  
-  // Attendance states
-  const [todayAttendance, setTodayAttendance] = useState(null);
   const [checkingIn, setCheckingIn] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
   const [attendanceError, setAttendanceError] = useState('');
@@ -57,7 +60,109 @@ function EmployeeDashboardContent() {
     leaveType: 'SICK_LEAVE'
   });
 
-  const total = chartData?.reduce((sum, item) => sum + item.value, 0) || 0;
+  const swrOpts = useMemo(
+    () => ({
+      swr: true,
+      freshMs: SWR_FRESH_MS,
+      staleMs: SWR_STALE_MS,
+    }),
+    []
+  );
+
+  const dashTags = useMemo(
+    () => [CACHE_TAGS.EMPLOYEE_DASHBOARD],
+    []
+  );
+
+  const fetchTodayAttendance = useCallback(async () => {
+    const res = await authenticatedFetch(
+      `${BASE_URL}/api/v1/attendance/me`,
+      { method: "GET" },
+      { skipGetRetry: true }
+    );
+    if (!res.ok) return null;
+    const response = await res.json();
+    return response.data || response;
+  }, []);
+
+  const { data: todayAttendance, loading: attLoading, refetch: refetchAttendance } = useCachedFetch(
+    cacheKeyEmployeeAttendanceMe(),
+    fetchTodayAttendance,
+    { ...swrOpts, tags: [...dashTags, CACHE_TAGS.EMPLOYEE_ATTENDANCE] }
+  );
+
+  const fetchSurveyStatusCount = useCallback(async () => {
+    const res = await authenticatedFetch(
+      `${BASE_URL}/api/v1/employeeFarmerSurveys/status-count/me`,
+      { method: "GET" },
+      { skipGetRetry: true }
+    );
+    if (!res.ok) return null;
+    return res.json();
+  }, []);
+
+  const { data: surveyStatusCount, loading: statusLoading } = useCachedFetch(
+    cacheKeyEmployeeSurveyStatusCountMe(),
+    fetchSurveyStatusCount,
+    { ...swrOpts, tags: [...dashTags, CACHE_TAGS.EMPLOYEE_SURVEYS] }
+  );
+
+  const fetchStatusTotal = useCallback(async (status) => {
+    const res = await authenticatedFetch(
+      `${BASE_URL}/api/v1/employeeFarmerSurveys/me/status/${status}`,
+      {},
+      { skipGetRetry: true }
+    );
+    if (res.status === 404) return 0;
+    if (!res.ok) return 0;
+    const json = await res.json();
+    return json?.totalElements ?? json?.data?.totalElements ?? 0;
+  }, []);
+
+  const fetchActivePie = useCallback(() => fetchStatusTotal("ACTIVE"), [fetchStatusTotal]);
+  const fetchInactivePie = useCallback(() => fetchStatusTotal("INACTIVE"), [fetchStatusTotal]);
+
+  const { data: activePieCount, loading: activeLoading } = useCachedFetch(
+    cacheKeyEmployeeSurveyMeStatus("ACTIVE"),
+    fetchActivePie,
+    { ...swrOpts, tags: [...dashTags, CACHE_TAGS.EMPLOYEE_SURVEYS] }
+  );
+  const { data: inactivePieCount, loading: inactiveLoading } = useCachedFetch(
+    cacheKeyEmployeeSurveyMeStatus("INACTIVE"),
+    fetchInactivePie,
+    { ...swrOpts, tags: [...dashTags, CACHE_TAGS.EMPLOYEE_SURVEYS] }
+  );
+
+  const fetchRecentFarmers = useCallback(async () => {
+    const res = await authenticatedFetch(
+      `${BASE_URL}/api/v1/employeeFarmerSurveys/my`,
+      { method: "GET" },
+      { skipGetRetry: true }
+    );
+    if (!res.ok) return [];
+    const json = await res.json();
+    const data = json?.data?.content ?? [];
+    return [...data].sort((a, b) => b.surveyId - a.surveyId).slice(0, 3);
+  }, []);
+
+  const { data: recentFarmers = [], loading: recentLoading } = useCachedFetch(
+    cacheKeyEmployeeRecentSurveys(),
+    fetchRecentFarmers,
+    { ...swrOpts, tags: [...dashTags, CACHE_TAGS.EMPLOYEE_SURVEYS] }
+  );
+
+  const chartData = useMemo(
+    () => [
+      { name: "Active", value: activePieCount ?? 0, color: "#6a5acd" },
+      { name: "Inactive", value: inactivePieCount ?? 0, color: "#ff9800" },
+    ],
+    [activePieCount, inactivePieCount]
+  );
+
+  const dashboardLoading =
+    attLoading && statusLoading && activeLoading && inactiveLoading && recentLoading;
+
+  const total = chartData.reduce((sum, item) => sum + item.value, 0) || 0;
 
   const userEmail = localStorage.getItem("userEmail");
 
@@ -72,52 +177,6 @@ function EmployeeDashboardContent() {
   const renderLabel = ({ value }) => {
     const percent = ((value / total) * 100).toFixed(0);
     return `${percent}%`;
-  };
-
-  const [dashboardLoading, setDashboardLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        await Promise.all([
-          fetchRecentFarmers(),
-          fetchPieChartData(),
-          fetchSurveyStatusCount(),
-          fetchTodayAttendance(),
-        ]);
-      } finally {
-        if (!cancelled) setDashboardLoading(false);
-      }
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const fetchTodayAttendance = async () => {
-    try {
-      const res = await authenticatedFetch(
-        `${BASE_URL}/api/v1/attendance/me`,
-        { method: "GET" },
-        { skipGetRetry: true }
-      );
-
-      if (!res.ok) {
-        // 401 = no permission, 404 = no attendance record today
-        setTodayAttendance(null);
-        return;
-      }
-
-      const response = await res.json();
-      const data = response.data || response;
-      
-      setTodayAttendance(data);
-    } catch (err) {
-      // Silent fail - user will see check-in button
-      setTodayAttendance(null);
-    }
   };
 
   const handleCheckIn = async () => {
@@ -185,7 +244,7 @@ function EmployeeDashboardContent() {
       
       setShowLocationModal(false);
       setCapturedLocation(null);
-      await fetchTodayAttendance();
+      await refetchAttendance();
       
     } catch (err) {
       setAttendanceError(err.message || 'Check-in failed');
@@ -263,7 +322,7 @@ function EmployeeDashboardContent() {
       
       setShowLocationModal(false);
       setCapturedLocation(null);
-      await fetchTodayAttendance();
+      await refetchAttendance();
       
     } catch (err) {
       setAttendanceError(err.message || 'Check-out failed');
@@ -333,80 +392,6 @@ function EmployeeDashboardContent() {
       showError(err.message || 'Leave request failed');
     } finally {
       setRequestingLeave(false);
-    }
-  };
-
-  const fetchSurveyStatusCount = async () => {
-    try {
-      const res = await authenticatedFetch(
-        `${BASE_URL}/api/v1/employeeFarmerSurveys/status-count/me`,
-        { method: "GET" },
-        { skipGetRetry: true }
-      );
-
-      // 401/404 = endpoint not available for this role — use defaults
-      if (!res.ok) return;
-
-      const data = await res.json();
-      setSurveyStatusCount(data);
-    } catch (error) {
-      // Silent fail — dashboard shows default counts
-    }
-  };
-
-  const fetchPieChartData = async () => {
-    try {
-      // Backend returns 404 when no surveys exist for a status — treat as 0, not an error
-      const fetchStatusCount = async (status) => {
-        const res = await authenticatedFetch(
-          `${BASE_URL}/api/v1/employeeFarmerSurveys/me/status/${status}`,
-          {},
-          { skipGetRetry: true }
-        );
-        if (res.status === 404) return 0;
-        if (!res.ok) return 0;
-        const json = await res.json();
-        return json?.totalElements ?? json?.data?.totalElements ?? 0;
-      };
-
-      const [activeCount, inactiveCount] = await Promise.all([
-        fetchStatusCount("ACTIVE"),
-        fetchStatusCount("INACTIVE"),
-      ]);
-
-      setChartData([
-        { name: "Active",   value: activeCount,   color: "#6a5acd" },
-        { name: "Inactive", value: inactiveCount, color: "#ff9800" },
-      ]);
-    } catch (err) {
-      setChartData([]);
-    }
-  };
-
-  const fetchRecentFarmers = async () => {
-    try {
-      const res = await authenticatedFetch(
-        `${BASE_URL}/api/v1/employeeFarmerSurveys/my`,
-        { method: "GET" },
-        { skipGetRetry: true }
-      );
-
-      // 401/404 = endpoint not available — show empty table
-      if (!res.ok) {
-        setRecentFarmers([]);
-        return;
-      }
-
-      const json = await res.json();
-      const data = json?.data?.content ?? [];
-
-      const latestThree = [...data]
-        .sort((a, b) => b.surveyId - a.surveyId)
-        .slice(0, 3);
-
-      setRecentFarmers(latestThree);
-    } catch (err) {
-      setRecentFarmers([]);
     }
   };
 

@@ -1,21 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import logo from '../assets/Jioji_logo.png';
-import '../styles/AdminLayout.css'; 
-import { 
-  LayoutDashboard, 
-  Users, 
-  Package, 
-  ShoppingCart, 
-  MessageSquare, 
-  FileText, 
+import '../styles/AdminLayout.css';
+import { useIsMobileDashboard } from '../hooks/useMediaQuery';
+import {
+  LayoutDashboard,
+  Users,
+  Package,
+  ShoppingCart,
+  MessageSquare,
+  FileText,
   LogOut,
   ChevronLeft,
   ChevronRight,
   Bell,
   Calendar,
-  ClipboardList
+  ClipboardList,
+  Inbox,
+  Menu,
 } from 'lucide-react';
 
 const ADMIN_MENU = [
@@ -31,8 +34,9 @@ const ADMIN_MENU = [
 const MANAGER_MENU = [
   { path: '/manager/dashboard',       label: 'Dashboard',            icon: <LayoutDashboard size={20} /> },
   { path: '/manager/employees',       label: 'Employee management',  icon: <Users size={20} /> },
+  { path: '/manager/farmer-registration-list', label: 'Farmer Reg. List', icon: <ClipboardList size={20} /> },
   { path: '/manager/attendance',      label: 'Attendance',           icon: <Calendar size={20} /> },
-  { path: '/manager/leave-management', label: 'Leave requests',      icon: <ClipboardList size={20} /> },
+  { path: '/manager/leave-management', label: 'Leave requests',      icon: <Inbox size={20} /> },
 ];
 
 function resolvePageTitle(pathname) {
@@ -50,18 +54,29 @@ function resolvePageTitle(pathname) {
 }
 
 const AdminLayout = () => {
+  const isMobile = useIsMobileDashboard(768);
   const [isExpanded, setIsExpanded] = useState(true);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuth();
+
+  useEffect(() => {
+    if (!isMobile) setMobileDrawerOpen(false);
+  }, [isMobile]);
+
+  const closeMobileDrawer = () => setMobileDrawerOpen(false);
 
   const isManagerPortal = location.pathname.startsWith('/manager');
   const menuItems = isManagerPortal ? MANAGER_MENU : ADMIN_MENU;
 
   const handleLogout = async () => {
+    closeMobileDrawer();
     await logout();
     navigate('/', { replace: true });
   };
+
+  const toggleSidebarDesktop = () => setIsExpanded((p) => !p);
 
   const navIsActive = (itemPath) => {
     if (location.pathname === itemPath) return true;
@@ -77,12 +92,40 @@ const AdminLayout = () => {
 
   const currentPage = resolvePageTitle(location.pathname);
 
+  const sidebarClass = [
+    'sidebar',
+    !isMobile && (isExpanded ? 'expanded' : 'collapsed'),
+    isMobile && 'sidebar-mobile',
+    isMobile && mobileDrawerOpen && 'admin-mobile-open',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <div className="admin-container">
+      {isMobile && mobileDrawerOpen && (
+        <div className="admin-sidebar-backdrop" onClick={closeMobileDrawer} aria-hidden="true" />
+      )}
+
       {/* SIDEBAR */}
-      <aside className={`sidebar ${isExpanded ? 'expanded' : 'collapsed'}`}>
-        <button className="sidebar-toggle" onClick={() => setIsExpanded(!isExpanded)}>
-          {isExpanded ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+      <aside className={sidebarClass}>
+        <button
+          type="button"
+          className="sidebar-toggle"
+          onClick={() => (isMobile ? setMobileDrawerOpen((o) => !o) : toggleSidebarDesktop())}
+          aria-label="Toggle sidebar"
+        >
+          {isMobile ? (
+            mobileDrawerOpen ? (
+              <ChevronLeft size={14} />
+            ) : (
+              <ChevronRight size={14} />
+            )
+          ) : isExpanded ? (
+            <ChevronLeft size={14} />
+          ) : (
+            <ChevronRight size={14} />
+          )}
         </button>
 
         <div className="sidebar-header">
@@ -92,7 +135,7 @@ const AdminLayout = () => {
             <div className="logo-circle">
               <img src={logo} alt="Jioji Green India Logo" />
             </div>
-            {isExpanded && (
+            {(isExpanded || isMobile) && (
               <div className="brand-names">
                 <span className="brand-title-main">JIOJI GREEN INDIA</span>
                 {isManagerPortal && (
@@ -111,24 +154,35 @@ const AdminLayout = () => {
                 key={item.path}
                 to={item.path}
                 className={`nav-item ${isActive ? 'active' : ''}`}
+                onClick={() => isMobile && closeMobileDrawer()}
               >
                 <span className="nav-icon">{item.icon}</span>
-                {isExpanded && <span className="nav-label">{item.label}</span>}
+                {(isExpanded || isMobile) && <span className="nav-label">{item.label}</span>}
               </Link>
             );
           })}
         </nav>
 
-        <button className="logout-button" onClick={handleLogout}>
+        <button type="button" className="logout-button" onClick={handleLogout}>
           <span className="nav-icon"><LogOut size={20} /></span>
-          {isExpanded && <span className="nav-label">Logout</span>}
+          {(isExpanded || isMobile) && <span className="nav-label">Logout</span>}
         </button>
       </aside>
 
       {/* MAIN VIEWPORT WITH HEADER */}
       <main className="main-viewport">
         <header className="top-header">
-          <h2 className="header-page-title">{currentPage}</h2>
+          <div className="top-header-title-row">
+            <button
+              type="button"
+              className={`admin-mobile-menu-btn ${isMobile ? 'admin-mobile-menu-btn--visible' : ''}`}
+              onClick={() => setMobileDrawerOpen(true)}
+              aria-label="Open navigation menu"
+            >
+              <Menu size={22} />
+            </button>
+            <h2 className="header-page-title">{currentPage}</h2>
+          </div>
           
           <div className="header-actions">
             <div className="date-filter-dropdown">

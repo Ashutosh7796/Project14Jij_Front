@@ -345,23 +345,44 @@
 /* MOBILE MENU BUTTON */
 .lab-mobile-menu-btn {
   display: none;
-  background: transparent;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: #f1f5f9;
   border: none;
+  border-radius: 12px;
   cursor: pointer;
   color: #3b1141;
-  padding: 5px;
+  flex-shrink: 0;
 }
 
-/* BACKDROP FOR MOBILE */
+.lab-mobile-menu-btn--visible {
+  display: inline-flex !important;
+}
+
+/* BACKDROP FOR MOBILE DRAWER */
 .lab-sidebar-backdrop {
   display: none;
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 999;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 1999;
+  animation: lab-backdrop-in 0.2s ease;
+}
+
+@keyframes lab-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.lab-main-content--mobile {
+  margin-left: 0 !important;
+  width: 100% !important;
 }
 
 /* ===================== RESPONSIVE DESIGN ===================== */
@@ -427,11 +448,6 @@
     padding: 8px;
   }
 
-  /* Show backdrop when sidebar is open on mobile */
-  .lab-sidebar-open + .lab-sidebar-backdrop {
-    display: block;
-  }
-  
   .lab-dropdown-menu {
     right: -10px;
     min-width: 180px;
@@ -566,125 +582,106 @@
   }
 }
 
-/* ========== MOBILE NAVBAR (REFERENCE MATCH) ========== */
+/* ========== MOBILE: slide-in drawer + visible top header ========== */
 @media (max-width: 768px) {
- 
-  /* NAVBAR CONTAINER */
-  .lab-sidebar {
+  .lab-layout-wrapper .lab-sidebar-backdrop {
+    display: block;
+  }
+
+  .lab-sidebar.lab-sidebar-mobile {
     position: fixed;
     top: 0;
     left: 0;
-    height: 56px; /* 🔥 matches reference */
-    width: 100%;
-    background-color: #3b1141;
+    height: 100vh;
+    height: 100dvh;
+    width: min(300px, 88vw);
+    max-width: 320px;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 20px 0;
+    border-radius: 0;
+    z-index: 2000;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 4px 0 28px rgba(0, 0, 0, 0.18);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .lab-sidebar.lab-sidebar-mobile.lab-mobile-open {
+    transform: translateX(0);
+  }
+
+  .lab-sidebar-mobile .lab-sidebar-header {
+    margin-bottom: 12px;
+    padding: 0 16px;
     display: flex;
-    flex-direction: row;
     align-items: center;
-    padding: 0 14px;
-    z-index: 1000;
+    justify-content: space-between;
+    text-align: left;
   }
- 
-  /* Disable sidebar width logic */
-  .lab-sidebar-open,
-  .lab-sidebar-closed {
-    width: 100% !important;
-  }
- 
-  /* BRAND (LEFT) */
-  .lab-sidebar-header {
-    margin: 0;
-    padding: 0;
-    flex-shrink: 0;
-  }
- 
-  .lab-logo-container {
+
+  .lab-sidebar-mobile .lab-logo-container {
     flex-direction: row;
+    gap: 10px;
     align-items: center;
-    gap: 8px;
   }
- 
-  .lab-logo {
-    width: 34px;
-    height: 34px;
+
+  .lab-sidebar-mobile .lab-logo {
+    width: 48px;
+    height: 48px;
   }
- 
-  .lab-logo-text {
+
+  .lab-sidebar-mobile .lab-logo-text {
     display: block !important;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.4px;
   }
- 
-  /* NAV ICONS (CENTER) */
-  .lab-sidebar-nav {
-    flex: 1;
+
+  .lab-sidebar-mobile .lab-toggle-btn {
     display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    gap: 14px;
-  }
-   
-  .lab-nav-item {
-    width: 38px;
-    height: 38px;
-    padding: 0;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
- 
-  .lab-nav-item span {
-    display: none !important;
-  }
- 
-  /* ACTIVE ICON (GREEN BG like reference) */
-  .lab-nav-active {
-    background-color: #28a745 !important;
-  }
- 
-  /* LOGOUT (RIGHT) */
-  .lab-sidebar-footer {
-    margin: 0;
-    padding: 0;
+    position: relative;
+    right: auto;
+    top: auto;
     flex-shrink: 0;
   }
- 
-  .lab-logout-btn {
-    width: 38px;
-    height: 38px;
-    padding: 0;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
- 
-  .lab-logout-btn span {
-    display: none !important;
-  }
- 
-  /* REMOVE DESKTOP ELEMENTS */
-  .lab-toggle-btn,
-  .lab-top-header {
-    display: none !important;
-  }
- 
-  /* CONTENT POSITION FIX */
-  .lab-main-content {
-    margin-left: 0 !important;
-    padding-top: 56px; /* navbar height */
-    min-height: 100vh;
-  }
- 
-  .lab-page-content {
-    min-height: calc(100vh - 56px);
+
+  .lab-sidebar-mobile .lab-sidebar-nav {
+    flex: 1;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 6px;
+    padding: 0 12px;
     overflow-y: auto;
   }
- 
-  /* NO BACKDROP ON MOBILE NAVBAR */
-  .lab-sidebar-backdrop {
-    display: none !important;
+
+  .lab-sidebar-mobile .lab-nav-item {
+    width: 100%;
+    height: auto;
+    padding: 12px 14px;
+    justify-content: flex-start;
+  }
+
+  .lab-sidebar-mobile .lab-nav-item span {
+    display: inline !important;
+    margin-left: 12px;
+  }
+
+  .lab-sidebar-mobile .lab-sidebar-footer {
+    margin-top: auto;
+    padding: 16px 12px 8px;
+  }
+
+  .lab-sidebar-mobile .lab-logout-btn {
+    width: 100%;
+    height: auto;
+    padding: 12px 14px;
+    justify-content: flex-start;
+  }
+
+  .lab-sidebar-mobile .lab-logout-btn span {
+    display: inline !important;
+  }
+
+  .lab-top-header {
+    display: flex !important;
   }
 }

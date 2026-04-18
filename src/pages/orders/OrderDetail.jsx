@@ -1,14 +1,31 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { useFetch } from '../../hooks/useFetch';
+import { useCachedFetch } from '../../hooks/useCachedFetch';
 import { adminApi } from '../../api/adminApi';
+import {
+  CACHE_TAGS,
+  SWR_FRESH_MS,
+  SWR_STALE_MS,
+  cacheKeyAdminOrderById,
+} from '../../cache/cacheKeys';
 import './OrdersDetails.css';
 
 const OrderDetail = () => {
   const { id } = useParams();
-  const { data: order, loading } = useFetch(
-    () => adminApi.getOrderById(id),
-    [id]
+  const fetchOrder = useCallback(() => adminApi.getOrderById(id), [id]);
+  const cacheOpts = useMemo(
+    () => ({
+      swr: true,
+      freshMs: SWR_FRESH_MS,
+      staleMs: SWR_STALE_MS,
+      tags: [CACHE_TAGS.ADMIN_ORDERS],
+    }),
+    []
+  );
+  const { data: order, loading } = useCachedFetch(
+    id ? cacheKeyAdminOrderById(id) : null,
+    fetchOrder,
+    cacheOpts
   );
 
   if (loading) return <div className="loading">Loading...</div>;

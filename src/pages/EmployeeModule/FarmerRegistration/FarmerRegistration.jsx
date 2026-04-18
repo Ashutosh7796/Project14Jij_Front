@@ -163,7 +163,7 @@ useEffect(() => {
     equipment: initialData.productionEquipment?.[0]?.toLowerCase() || "",
 
     // Fixed values
-    membershipFee: "250",
+    membershipFee: "350",
     termsAccepted: isEdit || autoAcceptTerms,
 
     // Uploads
@@ -829,7 +829,7 @@ useEffect(() => {
       crops: [],
       livestock: [],
       equipment: "",
-      membershipFee: "250",
+      membershipFee: "350",
       termsAccepted: false,
       selfieFile: null,
       selfiePreview: null,
@@ -1163,13 +1163,13 @@ useEffect(() => {
                     className="fee-amount"
                     style={{ fontWeight: "600", fontSize: "20px" }}
                   >
-                    ₹250/-
+                    ₹350/-
                   </div>
                   <div
                     className="fee-description"
                     style={{ fontSize: "14px", color: "#6b7280" }}
                   >
-                    (In words: Rupees Two Hundred Fifty Only)
+                    (In words: Rupees Three Hundred Fifty Only)
                   </div>
                 </div>
               </div>

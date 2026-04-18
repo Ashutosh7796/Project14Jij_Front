@@ -164,5 +164,29 @@ export const adminApi = {
     if (!res.ok) throw new Error("Failed to fetch attendance for date");
     const response = await res.json();
     return extractResponseData(response);
-  }
+  },
+
+  /* ================= ORDERS (commerce) ================= */
+  getAllOrders: async (page = 0, size = 200) => {
+    const res = await authenticatedFetch(
+      `${BASE_URL}/orders?page=${page}&size=${size}`,
+      {},
+      { skipGetRetry: true }
+    );
+    if (!res.ok) throw new Error("Failed to fetch orders");
+    const data = await res.json();
+    const extracted = extractResponseData(data);
+    if (Array.isArray(extracted)) return extracted;
+    if (Array.isArray(extracted?.content)) return extracted.content;
+    if (Array.isArray(extracted?.data)) return extracted.data;
+    return [];
+  },
+
+  getOrderById: async (id) => {
+    if (id == null || id === "") throw new Error("Missing order id");
+    const res = await authenticatedFetch(`${BASE_URL}/orders/${id}`, {}, { skipGetRetry: true });
+    if (!res.ok) throw new Error("Failed to fetch order");
+    const data = await res.json();
+    return extractResponseData(data);
+  },
 };

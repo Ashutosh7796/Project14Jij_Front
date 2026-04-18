@@ -22,7 +22,7 @@ const FarmerDetail = () => {
     const fetchSurvey = async () => {
       try {
         const res = await fetch(
-          `${BASE_URL}/api/v1/employeeFarmerSurveys/${id}`,
+          `${BASE_URL}/api/v1/employeeFarmerSurveys/${encodeURIComponent(id)}`,
           {
             headers: {
               Authorization: `Bearer ${getToken()}`,

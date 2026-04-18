@@ -83,7 +83,7 @@ export default function FarmerPaymentResultPage({ status = "failed" }) {
 
   const handleDownloadInvoice = () => {
     if (!invoiceData) return;
-    downloadFarmerInvoicePdf({
+    void downloadFarmerInvoicePdf({
       paymentId: invoiceData.paymentId,
       ccavenueOrderId: invoiceData.orderId,
       farmerName: invoiceData.farmerName,
@@ -94,7 +94,7 @@ export default function FarmerPaymentResultPage({ status = "failed" }) {
       bankRefNo: invoiceData.bankRefNo,
       ccavenuePaymentMode: invoiceData.paymentMode,
       updatedAt: invoiceData.paidAt,
-    });
+    }).catch(() => {});
   };
 
   return (

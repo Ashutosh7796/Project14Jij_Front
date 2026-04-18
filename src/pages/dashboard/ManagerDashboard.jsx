@@ -1,8 +1,14 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { useFetch } from "../../hooks/useFetch";
+import { useCachedFetch } from "../../hooks/useCachedFetch";
 import { useRoleBasePath } from "../../hooks/useRoleBasePath";
 import { fetchDashboardCardMetrics } from "../../api/dashboardMetrics";
+import {
+  CACHE_TAGS,
+  SWR_FRESH_MS,
+  SWR_STALE_MS,
+  cacheKeyDashboardMetrics,
+} from "../../cache/cacheKeys";
 import { useAuth } from "../../context/AuthContext";
 import {
   AdminDashboardAuthShell,
@@ -24,7 +30,20 @@ const StatCard = ({ label, value, icon }) => (
 function ManagerDashboardContent() {
   const base = useRoleBasePath();
   const fetchMetrics = useCallback(() => fetchDashboardCardMetrics(), []);
-  const { data: metrics, loading: metricsLoading } = useFetch(fetchMetrics);
+  const metricsCacheOpts = useMemo(
+    () => ({
+      swr: true,
+      freshMs: SWR_FRESH_MS,
+      staleMs: SWR_STALE_MS,
+      tags: [CACHE_TAGS.MANAGER_DASHBOARD_METRICS],
+    }),
+    []
+  );
+  const { data: metrics, loading: metricsLoading } = useCachedFetch(
+    cacheKeyDashboardMetrics("manager"),
+    fetchMetrics,
+    metricsCacheOpts
+  );
 
   const m = metrics ?? { employees: 0 };
   const statCards = [
@@ -42,8 +61,8 @@ function ManagerDashboardContent() {
           <h2>Manager overview</h2>
         </div>
         <p style={{ margin: 0, color: "#4b5563", fontSize: "14px", lineHeight: 1.5 }}>
-          You can manage employees, attendance, and leave requests. Product, order, and farmer
-          admin tools are not available in this portal.
+          Hi, Welcome
+          to portal.
         </p>
       </div>
 
@@ -91,7 +110,7 @@ function ManagerDashboardContent() {
               <div className="work-cell">
                 Employees: <span className="val">{m.employees}</span>
               </div>
-              <div className="work-cell">Use the sidebar for day-to-day HR tasks.</div>
+              <div className="work-cell"></div>
             </div>
           </div>
         )}

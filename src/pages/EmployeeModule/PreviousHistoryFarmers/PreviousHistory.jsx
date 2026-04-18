@@ -1,9 +1,17 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import "./PreviousHistory.css";
 import SurveyDetailView from "../HistoryOverview/HistoryOverview";
 import FarmerRegistration from "../FarmerRegistration/FarmerRegistration";
 import { useToast } from "../../../hooks/useToast";
+import { useCachedFetch } from "../../../hooks/useCachedFetch";
+import { invalidateTags } from "../../../cache/requestCache";
+import {
+  CACHE_TAGS,
+  SWR_FRESH_MS,
+  SWR_STALE_MS,
+  cacheKeyEmployeeHistoryPage,
+} from "../../../cache/cacheKeys";
 import { BASE_URL } from "../../../config/api";
 import { authenticatedFetch, getToken } from "../../../utils/auth";
 import { downloadFarmerInvoicePdf } from "../../../utils/farmerInvoicePdf";
@@ -41,9 +49,7 @@ const PreviousHistory = () => {
   const [selectedSurveyData, setSelectedSurveyData] = useState(null);
  
   const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
- 
+
   const [historyData, setHistoryData] = useState([]);
  
   const [page, setPage] = useState(0); // backend is 0-based
@@ -66,98 +72,103 @@ const PreviousHistory = () => {
     return Array.from({ length: end - start }, (_, i) => start + i);
   };
  
-  // Check authentication on mount
   useEffect(() => {
     const token = getToken();
- 
+
     if (!token) {
       showToast("You are not logged in. Please login first.", "error");
       setTimeout(() => {
         window.location.href = "/";
       }, 2000);
-      return;
     }
- 
-    fetchHistoryData();
-  }, [page]);
- 
-  const fetchHistoryData = async () => {
-    setLoading(true);
-    setError(null);
- 
-    try {
-      const response = await authenticatedFetch(
-        `${BASE_URL}/api/v1/employeeFarmerSurveys/my?page=${page}&size=${pageSize}`,
-        { method: "GET" },
-        showToast
+  }, [showToast]);
+
+  const fetchHistoryPage = useCallback(async () => {
+    const response = await authenticatedFetch(
+      `${BASE_URL}/api/v1/employeeFarmerSurveys/my?page=${page}&size=${pageSize}`,
+      { method: "GET" },
+      showToast
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to fetch history data: ${response.status} - ${errorText}`
       );
- 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `Failed to fetch history data: ${response.status} - ${errorText}`
-        );
-      }
- 
-      const apiResponse = await response.json();
-      const responseData = apiResponse.data;
- 
-      let data = [];
- 
-      if (responseData && Array.isArray(responseData.content)) {
-        // ✅ Paginated response
-        data = responseData.content;
- 
-        setTotalPages(responseData.totalPages ?? 0);
-        setTotalElements(responseData.totalElements ?? 0);
-      } else if (Array.isArray(responseData)) {
-        // ✅ Non-paginated fallback
-        data = responseData;
- 
-        setTotalPages(1);
-        setTotalElements(responseData.length);
-      } else {
-        data = [];
-      }
- 
-      // Transform API data to match your existing structure
-      const transformedData = data.map((item) => {
-        const normalizedSurveyId = extractSurveyId(item);
-        const status =
-          item.formStatus === "ACTIVE"
-            ? "Active"
-            : item.formStatus === "PENDING"
-            ? "Pending"
-            : "Inactive";
- 
-        return {
-          id: normalizedSurveyId,
-          farmerName: item.farmerName || "N/A",
-          village: item.village || "N/A",
-          surveyType: item.surveyType || "Annual",
-          mobileNumber: item.farmerMobile || "N/A",
-          formNumber: item.formNumber || "N/A",
-          date: item.createdAt
-            ? new Date(item.createdAt).toLocaleDateString("en-GB", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })
-            : "-",
-          status,
-          hasSuccessfulPayment: false,
-        };
-      });
- 
-      setHistoryData(transformedData);
-      enrichPaymentState(transformedData);
-    } catch (err) {
-      setError(err.message || "Failed to load history data");
-      setHistoryData([]);
-    } finally {
-      setLoading(false);
     }
-  };
+
+    const apiResponse = await response.json();
+    const responseData = apiResponse.data;
+
+    let data = [];
+    let nextTotalPages = 0;
+    let nextTotalElements = 0;
+
+    if (responseData && Array.isArray(responseData.content)) {
+      data = responseData.content;
+      nextTotalPages = responseData.totalPages ?? 0;
+      nextTotalElements = responseData.totalElements ?? 0;
+    } else if (Array.isArray(responseData)) {
+      data = responseData;
+      nextTotalPages = 1;
+      nextTotalElements = responseData.length;
+    }
+
+    const transformedData = data.map((item) => {
+      const normalizedSurveyId = extractSurveyId(item);
+      const status =
+        item.formStatus === "ACTIVE"
+          ? "Active"
+          : item.formStatus === "PENDING"
+          ? "Pending"
+          : "Inactive";
+
+      return {
+        id: normalizedSurveyId,
+        farmerName: item.farmerName || "N/A",
+        village: item.village || "N/A",
+        surveyType: item.surveyType || "Annual",
+        mobileNumber: item.farmerMobile || "N/A",
+        formNumber: item.formNumber || "N/A",
+        date: item.createdAt
+          ? new Date(item.createdAt).toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })
+          : "-",
+        status,
+        hasSuccessfulPayment: false,
+      };
+    });
+
+    return {
+      list: transformedData,
+      totalPages: nextTotalPages,
+      totalElements: nextTotalElements,
+    };
+  }, [page, pageSize, showToast]);
+
+  const historyCacheOpts = useMemo(
+    () => ({
+      swr: true,
+      freshMs: SWR_FRESH_MS,
+      staleMs: SWR_STALE_MS,
+      tags: [CACHE_TAGS.EMPLOYEE_SURVEYS],
+    }),
+    []
+  );
+
+  const {
+    data: pageBundle,
+    loading,
+    error,
+    refetch: refetchHistory,
+  } = useCachedFetch(
+    cacheKeyEmployeeHistoryPage(page, pageSize),
+    fetchHistoryPage,
+    historyCacheOpts
+  );
 
   const fetchPaidSurveyIds = async (surveyIds) => {
     const uniqueSurveyIds = [...new Set((surveyIds || []).filter(Boolean).map(String))];
@@ -220,7 +231,18 @@ const PreviousHistory = () => {
       })
     );
   };
- 
+
+  useEffect(() => {
+    if (!pageBundle) {
+      setHistoryData([]);
+      return;
+    }
+    setTotalPages(pageBundle.totalPages ?? 0);
+    setTotalElements(pageBundle.totalElements ?? 0);
+    setHistoryData(pageBundle.list ?? []);
+    if (pageBundle.list?.length) void enrichPaymentState(pageBundle.list);
+  }, [pageBundle]);
+
   const filteredData = historyData.filter((item) => {
     const matchesSearch =
       item.farmerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -268,8 +290,7 @@ const PreviousHistory = () => {
   const handleBackToList = () => {
     setSelectedSurvey(null);
     setIsEditing(false);
-    // Refresh data after editing
-    fetchHistoryData();
+    void refetchHistory();
   };
 
   const handleProceedToPayment = (item) => {
@@ -291,11 +312,11 @@ const PreviousHistory = () => {
       showToast("Invoice details not available yet.", "error");
       return;
     }
-    downloadFarmerInvoicePdf({
+    void downloadFarmerInvoicePdf({
       ...item.successfulPayment,
       farmerName: item.successfulPayment.farmerName || item.farmerName,
       surveyId: item.successfulPayment.surveyId || item.id,
-    });
+    }).catch(() => {});
   };
  
   // 🔹 Edit Mode → FarmerRegistration
@@ -308,7 +329,7 @@ const PreviousHistory = () => {
         scrollToSelfie={true}
         autoAcceptTerms={true}
         onSuccess={() => {
-          // Update history status if needed
+          invalidateTags([CACHE_TAGS.EMPLOYEE_SURVEYS]);
           setHistoryData((prev) =>
             prev.map((item) =>
               item.id === selectedSurvey ? { ...item, status: "Active" } : item
@@ -366,7 +387,8 @@ const PreviousHistory = () => {
         >
           <div style={{ fontSize: "18px", color: "#c33" }}>⚠️ {error}</div>
           <button
-            onClick={fetchHistoryData}
+            type="button"
+            onClick={() => void refetchHistory()}
             style={{
               padding: "10px 20px",
               backgroundColor: "#4CAF50",

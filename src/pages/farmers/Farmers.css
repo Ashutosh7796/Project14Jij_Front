@@ -141,6 +141,13 @@ tbody td:first-child {
   padding-left: 28px;
 }
 
+.fl-serial-cell {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #333;
+  width: 3rem;
+}
+
 thead th:last-child,
 tbody td:last-child {
   padding-right: 28px;
@@ -193,9 +200,18 @@ tbody tr:hover {
 .dots-trigger {
   cursor: pointer;
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 8px;
   border-radius: 6px;
   transition: background 0.2s;
+}
+
+button.fl-dots-trigger.dots-trigger {
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
 }
 
 .dots-trigger:hover {
@@ -215,15 +231,30 @@ tbody tr:hover {
   overflow: hidden;
 } */
 
-.floating-menu {
-  position: fixed;                /* ✅ KEY FIX */
+/* Single flyout anchored with inline top/left from getBoundingClientRect (FarmerList.jsx) */
+.floating-menu.fl-floating-menu {
+  position: fixed;
   background: #fff;
-  min-width: 150px;
+  min-width: 168px;
   border-radius: 10px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
   border: 1px solid #eee;
-  z-index: 9999;                  /* ✅ ABOVE TABLE */
+  z-index: 10050;
   overflow: hidden;
+}
+
+.fl-action-placeholder {
+  color: #aaa;
+  font-size: 14px;
+}
+
+button.fl-menu-delete-btn {
+  width: 100%;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 
@@ -411,11 +442,6 @@ tbody tr:hover {
   .page-btn {
     padding: 8px 14px;
     font-size: 13px;
-  }
-
-  .floating-menu {
-    right: -10px;
-    min-width: 140px;
   }
 
   .menu-item {

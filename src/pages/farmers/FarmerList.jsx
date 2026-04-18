@@ -1,18 +1,52 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, MoreVertical, Eye, Pencil, Trash2 } from "lucide-react";
+import { Search, MoreVertical, Eye, Trash2 } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
+import { useCachedFetch } from "../../hooks/useCachedFetch";
+import { invalidateTags } from "../../cache/requestCache";
+import {
+  CACHE_TAGS,
+  SWR_FRESH_MS,
+  SWR_STALE_MS,
+  cacheKeyEmployeeFarmerSurveysPage,
+} from "../../cache/cacheKeys";
 import { BASE_URL } from "../../config/api";
 import { authenticatedFetch, getToken, clearAuthData } from "../../utils/auth";
 import "./Farmers.css";
+
+/**
+ * Path segment for GET/DELETE /employeeFarmerSurveys/{id} and /admin/farmers/:id.
+ * Backend SurveyIdResolver accepts numeric surveyId, formNumber (e.g. 2026040016), or sur_* public id.
+ * When surveyId is null, formNumber is used (DTO shape from admin list API).
+ */
+function resolveApiSurveyKey(survey) {
+  if (!survey) return null;
+  const sid = survey.surveyId ?? survey.id ?? survey.surveyID ?? survey.survey_id;
+  if (sid != null && String(sid).trim() !== "") return String(sid).trim();
+  const fn = survey.formNumber;
+  if (fn != null && String(fn).trim() !== "") return String(fn).trim();
+  const pub = survey.surveyPublicId ?? survey.survey_public_id;
+  if (pub != null && String(pub).trim() !== "") return String(pub).trim();
+  return null;
+}
+
+function rowDisplayIndex(page, size, rowIdx) {
+  return page * size + rowIdx + 1;
+}
+
+function formatStatus(survey) {
+  const raw = survey?.formStatus ?? survey?.status ?? "ACTIVE";
+  const s = String(raw).replace(/_/g, " ").toLowerCase();
+  return s.length ? s.charAt(0).toUpperCase() + s.slice(1) : "Active";
+}
 
 const FarmerList = () => {
   const { showToast, ToastComponent } = useToast();
   const navigate = useNavigate();
   const [surveys, setSurveys] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [menuPosition, setMenuPosition] = useState(null);
 
   // pagination (backend)
   const [page, setPage] = useState(0);
@@ -31,81 +65,146 @@ const FarmerList = () => {
   }, []);
 
   const isMobile = windowWidth <= 768;
-  const isTablet = windowWidth <= 1024 && windowWidth > 768;
 
-  /* ================= FETCH DATA ================= */
-  const fetchEmployeeFarmerSurveys = async () => {
+  const fetchSurveysPage = useCallback(async () => {
     const token = getToken();
     if (!token) {
       showToast("Session expired. Please log in again.", "error");
       clearAuthData();
       navigate("/auth-login");
-      return;
+      throw new Error("Not authenticated");
     }
 
-    setLoading(true);
-    try {
-      const res = await authenticatedFetch(
-        `${BASE_URL}/api/v1/employeeFarmerSurveys?page=${page}&size=${size}`
-      );
+    const res = await authenticatedFetch(
+      `${BASE_URL}/api/v1/employeeFarmerSurveys?page=${page}&size=${size}`
+    );
 
-      if (res.status === 401) {
-        showToast("Your session has expired. Please log in again.", "error");
-        clearAuthData();
-        navigate("/auth-login");
-        return;
-      }
-
-      if (res.status === 403) {
-        showToast("You don't have permission to view this page.", "error");
-        setLoading(false);
-        return;
-      }
-
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json.message || "Failed to fetch surveys");
-      }
-
-      setSurveys(json.data?.content || []);
-      setTotalPages(json.data?.totalPages || 1);
-    } catch (err) {
-      showToast(err.message || "Failed to load farmer data. Please try again.", "error");
-    } finally {
-      setLoading(false);
+    if (res.status === 401) {
+      showToast("Your session has expired. Please log in again.", "error");
+      clearAuthData();
+      navigate("/auth-login");
+      throw new Error("Unauthorized");
     }
-  };
 
-  useEffect(() => {
-    fetchEmployeeFarmerSurveys();
-  }, [page]);
+    if (res.status === 403) {
+      showToast("You don't have permission to view this page.", "error");
+      return { content: [], totalPages: 1 };
+    }
 
-  /* ================= CLOSE MENU ON OUTSIDE CLICK ================= */
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setOpenMenuId(null);
-      }
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json.message || "Failed to fetch surveys");
+    }
+
+    return {
+      content: json.data?.content || [],
+      totalPages: json.data?.totalPages || 1,
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [page, size, navigate, showToast]);
 
-  /* ================= SEARCH FILTER ================= */
-  const filteredSurveys = surveys.filter((item) =>
-    `${item.farmerName || ""} ${item.village || ""} ${item.farmerMobile || ""}`
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase())
+  const listCacheOpts = useMemo(
+    () => ({
+      swr: true,
+      freshMs: SWR_FRESH_MS,
+      staleMs: SWR_STALE_MS,
+      tags: [CACHE_TAGS.ADMIN_FARMER_SURVEYS],
+    }),
+    []
   );
 
+  const { data: listPayload, loading } = useCachedFetch(
+    cacheKeyEmployeeFarmerSurveysPage(page, size),
+    fetchSurveysPage,
+    listCacheOpts
+  );
+
+  useEffect(() => {
+    setSurveys(listPayload?.content ?? []);
+    if (listPayload?.totalPages != null) {
+      setTotalPages(listPayload.totalPages);
+    }
+  }, [listPayload]);
+
+  const filteredSurveys = useMemo(
+    () =>
+      surveys.filter((item) =>
+        `${item.farmerName || ""} ${item.village || ""} ${item.farmerMobile || ""}`
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase())
+      ),
+    [surveys, searchTerm]
+  );
+
+  const openedSurvey = useMemo(() => {
+    if (openMenuId == null) return null;
+    return filteredSurveys.find((s) => resolveApiSurveyKey(s) === openMenuId) ?? null;
+  }, [openMenuId, filteredSurveys]);
+
+  const toggleActionMenu = useCallback((survey, anchorEl) => {
+    const sid = resolveApiSurveyKey(survey);
+    if (!sid) return;
+    if (openMenuId === sid) {
+      setOpenMenuId(null);
+      setMenuPosition(null);
+      return;
+    }
+    const r = anchorEl.getBoundingClientRect();
+    const menuWidth = 168;
+    const left = Math.min(
+      Math.max(8, r.right - menuWidth),
+      window.innerWidth - menuWidth - 8
+    );
+    setMenuPosition({ top: r.bottom + 4, left });
+    setOpenMenuId(sid);
+  }, [openMenuId]);
+
+  /* ================= CLOSE MENU ON OUTSIDE CLICK / SCROLL ================= */
+  useEffect(() => {
+    if (openMenuId == null) return;
+
+    const handlePointerDown = (e) => {
+      if (menuRef.current?.contains(e.target)) return;
+      if (e.target.closest?.(".fl-dots-trigger")) return;
+      setOpenMenuId(null);
+      setMenuPosition(null);
+    };
+
+    const handleScrollOrResize = () => {
+      setOpenMenuId(null);
+      setMenuPosition(null);
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("scroll", handleScrollOrResize, true);
+    window.addEventListener("resize", handleScrollOrResize);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("scroll", handleScrollOrResize, true);
+      window.removeEventListener("resize", handleScrollOrResize);
+    };
+  }, [openMenuId]);
+
+  useEffect(() => {
+    if (openMenuId != null && !openedSurvey) {
+      setOpenMenuId(null);
+      setMenuPosition(null);
+    }
+  }, [openMenuId, openedSurvey]);
+
+  useEffect(() => {
+    setOpenMenuId(null);
+    setMenuPosition(null);
+  }, [searchTerm]);
+
   /* ================= DELETE HANDLER ================= */
-  const handleDelete = async (surveyId) => {
+  const handleDelete = async (apiKey) => {
     if (!window.confirm("Are you sure you want to delete this farmer?")) {
       return;
     }
 
     try {
-      const res = await authenticatedFetch(`${BASE_URL}/api/v1/employeeFarmerSurveys/${surveyId}`, {
+      const enc = encodeURIComponent(apiKey);
+      const res = await authenticatedFetch(`${BASE_URL}/api/v1/employeeFarmerSurveys/${enc}`, {
         method: "DELETE",
       });
 
@@ -122,7 +221,7 @@ const FarmerList = () => {
       }
 
       showToast("Farmer deleted successfully", "success");
-      fetchEmployeeFarmerSurveys();
+      invalidateTags([CACHE_TAGS.ADMIN_FARMER_SURVEYS, CACHE_TAGS.ADMIN_RECENT_FARMERS]);
     } catch (err) {
       showToast(err.message, "error");
     }
@@ -186,7 +285,7 @@ const FarmerList = () => {
         <table>
           <thead>
             <tr>
-              <th>User ID</th>
+              <th>#</th>
               <th>Farmer Name</th>
               <th>Village</th>
               <th>Phone</th>
@@ -197,62 +296,43 @@ const FarmerList = () => {
 
           <tbody>
             {filteredSurveys.length > 0 ? (
-              filteredSurveys.map((survey) => (
-                <tr key={survey.surveyId}>
-                  <td>FMR_{survey.surveyId}</td>
-                  <td>{survey.farmerName || "N/A"}</td>
-                  <td>{survey.village || "N/A"}</td>
-                  <td>{survey.farmerMobile || "N/A"}</td>
-                  <td>
-                    <span className="status-active">
-                      {survey.status || "Active"}
-                    </span>
-                  </td>
+              filteredSurveys.map((survey, idx) => {
+                const apiKey = resolveApiSurveyKey(survey);
+                const rowKey =
+                  apiKey ??
+                  `uid-${survey?.userId ?? "x"}-mob-${String(survey?.farmerMobile ?? "").slice(-4)}-${idx}`;
+                const serial = rowDisplayIndex(page, size, idx);
+                return (
+                  <tr key={rowKey}>
+                    <td className="fl-serial-cell">{serial}</td>
+                    <td>{survey.farmerName || "N/A"}</td>
+                    <td>{survey.village || "N/A"}</td>
+                    <td>{survey.farmerMobile || "N/A"}</td>
+                    <td>
+                      <span className="status-active">{formatStatus(survey)}</span>
+                    </td>
 
-                  <td className="action-cell">
-                    <div
-                      className="dots-trigger"
-                      onClick={() =>
-                        setOpenMenuId(
-                          openMenuId === survey.surveyId ? null : survey.surveyId
-                        )
-                      }
-                    >
-                      <MoreVertical size={isMobile ? 18 : 20} />
-                    </div>
-
-                    {openMenuId === survey.surveyId && (
-                      <div className="floating-menu" ref={menuRef}>
-                        <Link
-                          to={`/admin/farmers/${survey.surveyId}`}
-                          className="menu-item"
-                          onClick={() => setOpenMenuId(null)}
+                    <td className="action-cell">
+                      {apiKey ? (
+                        <button
+                          type="button"
+                          className="fl-dots-trigger dots-trigger"
+                          aria-expanded={openMenuId === apiKey}
+                          aria-haspopup="true"
+                          aria-label="Row actions"
+                          onClick={(e) => toggleActionMenu(survey, e.currentTarget)}
                         >
-                          <Eye size={16} className="purple-icon" /> View
-                        </Link>
-
-                        {/* <Link
-                          to={`/admin/farmers/edit/${survey.surveyId}`}
-                          className="menu-item"
-                          onClick={() => setOpenMenuId(null)}
-                        >
-                          <Pencil size={16} className="purple-icon" /> Edit
-                        </Link> */}
-
-                        <div
-                          className="menu-item delete"
-                          onClick={() => {
-                            setOpenMenuId(null);
-                            handleDelete(survey.surveyId);
-                          }}
-                        >
-                          <Trash2 size={16} /> Delete
-                        </div>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))
+                          <MoreVertical size={isMobile ? 18 : 20} />
+                        </button>
+                      ) : (
+                        <span className="fl-action-placeholder" title="Missing survey id and form number">
+                          —
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
                 <td
@@ -310,6 +390,40 @@ const FarmerList = () => {
       >
         Showing {filteredSurveys.length} of {surveys.length} farmers
       </div>
+
+      {openedSurvey && menuPosition && (
+        <div
+          ref={menuRef}
+          className="floating-menu fl-floating-menu"
+          role="menu"
+          style={{ top: menuPosition.top, left: menuPosition.left }}
+        >
+          <Link
+            to={`/admin/farmers/${encodeURIComponent(resolveApiSurveyKey(openedSurvey) ?? "")}`}
+            className="menu-item"
+            role="menuitem"
+            onClick={() => {
+              setOpenMenuId(null);
+              setMenuPosition(null);
+            }}
+          >
+            <Eye size={16} className="purple-icon" /> View
+          </Link>
+          <button
+            type="button"
+            className="menu-item delete fl-menu-delete-btn"
+            role="menuitem"
+            onClick={() => {
+              const id = resolveApiSurveyKey(openedSurvey);
+              setOpenMenuId(null);
+              setMenuPosition(null);
+              if (id) handleDelete(id);
+            }}
+          >
+            <Trash2 size={16} /> Delete
+          </button>
+        </div>
+      )}
       
       {/* Toast Notifications */}
       <ToastComponent />

@@ -74,6 +74,24 @@ body,
   position: relative;
 }
 
+/* Wider card for registration (extra fields) */
+.authCardWide {
+  max-width: 500px;
+}
+
+/* Two-column name row — stacks on small screens */
+.authFormRow2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 520px) {
+  .authFormRow2 {
+    grid-template-columns: 1fr;
+  }
+}
+
 .glassCard {
   background: rgba(255, 255, 255, 0.07);
   backdrop-filter: blur(20px);

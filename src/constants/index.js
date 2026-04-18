@@ -74,7 +74,7 @@ export const STORAGE_KEYS = {
 export const API_ENDPOINTS = {
   // Auth
   LOGIN: '/jwt/login',
-  REGISTER: '/api/v1/auth/register',
+  REGISTER: '/api/auth/v1/register',
   LOGOUT: '/api/v1/auth/logout',
   
   // Admin

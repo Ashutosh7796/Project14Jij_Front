@@ -1,7 +1,14 @@
 import { useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useFetch } from '../../hooks/useFetch';
+import { useCachedFetch } from '../../hooks/useCachedFetch';
 import { adminApi } from '../../api/adminApi';
+import {
+  CACHE_TAGS,
+  SWR_FRESH_MS,
+  SWR_STALE_MS,
+  cacheKeyDashboardMetrics,
+  cacheKeyAdminRecentFarmers,
+} from '../../cache/cacheKeys';
 import { fetchDashboardCardMetrics } from '../../api/dashboardMetrics';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -61,13 +68,40 @@ const EmptyState = ({ icon, title, subtitle }) => (
 /* ─── main component ──────────────────────────────────────── */
 
 // Inner component — only mounted after auth is confirmed ready.
-// This guarantees useFetch never fires without a valid token.
+// Cached fetches share the request cache (SWR + dedupe + tag invalidation).
 const DashboardContent = () => {
   const fetchMetrics = useCallback(() => fetchDashboardCardMetrics(), []);
   const fetchOrders = useCallback(() => adminApi.getAllFarmers(0, 5), []);
 
-  const { data: metrics,     loading: metricsLoading } = useFetch(fetchMetrics);
-  const { data: ordersData, loading: ordersLoading } = useFetch(fetchOrders);
+  const metricsCacheOpts = useMemo(
+    () => ({
+      swr: true,
+      freshMs: SWR_FRESH_MS,
+      staleMs: SWR_STALE_MS,
+      tags: [CACHE_TAGS.ADMIN_DASHBOARD_METRICS],
+    }),
+    []
+  );
+  const farmersCacheOpts = useMemo(
+    () => ({
+      swr: true,
+      freshMs: SWR_FRESH_MS,
+      staleMs: SWR_STALE_MS,
+      tags: [CACHE_TAGS.ADMIN_RECENT_FARMERS],
+    }),
+    []
+  );
+
+  const { data: metrics, loading: metricsLoading } = useCachedFetch(
+    cacheKeyDashboardMetrics('admin'),
+    fetchMetrics,
+    metricsCacheOpts
+  );
+  const { data: ordersData, loading: ordersLoading } = useCachedFetch(
+    cacheKeyAdminRecentFarmers(0, 5),
+    fetchOrders,
+    farmersCacheOpts
+  );
 
   const m = useMemo(
     () =>

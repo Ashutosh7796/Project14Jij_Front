@@ -1,7 +1,9 @@
 import { authApi } from '../api/authApi';
+import { clearAllRequestCache } from '../cache/requestCache';
 import {
   setToken, setRole, setUserData, setUserEmail, setUserId,
-  getToken, getUserData, isAuthenticated, clearAuthData
+  getToken, getUserData, isAuthenticated, clearAuthData,
+  normalizeAccessToken,
 } from '../utils/auth';
 
 export const authService = {
@@ -9,6 +11,7 @@ export const authService = {
     // CRITICAL: Clear ALL old auth data BEFORE setting new data.
     // This prevents stale admin tokens from persisting when an employee logs in.
     clearAuthData();
+    clearAllRequestCache();
 
     const response = await authApi.login(credentials, type);
 
@@ -40,9 +43,11 @@ export const authService = {
       if (credentials.email) setUserEmail(credentials.email);
       setUserData(userData);
 
-      // CRITICAL: Verify token was actually stored
+      // CRITICAL: Verify token was actually stored (compare normalized forms —
+      // API may return "Bearer eyJ…" or quoted strings; setToken normalizes.)
       const storedToken = getToken();
-      if (!storedToken || storedToken !== response.accessToken) {
+      const raw = response.accessToken;
+      if (!storedToken || storedToken !== normalizeAccessToken(raw)) {
         throw new Error('Failed to store authentication token');
       }
     }
@@ -83,6 +88,7 @@ export const authService = {
       // authApi.logout() already calls clearAuthData(),
       // but we call it again in finally for safety.
       clearAuthData();
+      clearAllRequestCache();
     }
   },
 

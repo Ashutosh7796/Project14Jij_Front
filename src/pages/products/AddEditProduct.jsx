@@ -3,6 +3,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { X, Plus, ImageOff } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 import { productApi, IMAGE_TYPE } from "../../api/productApi";
+import { invalidateTags, invalidateKey, invalidatePrefix } from "../../cache/requestCache";
+import { CACHE_TAGS, cacheKeyProductById } from "../../cache/cacheKeys";
+import { toProductImgSrc } from "../../utils/productImage";
 import "./product.css";
 
 const SECTION_TYPES = [
@@ -14,15 +17,6 @@ const SECTION_TYPES = [
   { value: "DOWNLOAD",               label: "Download" },
 ];
 const EMPTY_SECTION = { sectionType: "VARIETY_OVERVIEW", content: [""] };
-
-/* ── resolve image src
-     Backend DTO field is `imageData` (raw base64, no data: prefix).
-     Falls back gracefully for data-urls or http URLs. ── */
-function toImgSrc(imageData, contentType = "image/jpeg") {
-  if (!imageData) return null;
-  if (imageData.startsWith("data:") || imageData.startsWith("http")) return imageData;
-  return `data:${contentType || "image/jpeg"};base64,${imageData}`;
-}
 
 /* ── Delete confirmation modal ── */
 const DeleteConfirmModal = ({ onConfirm, onCancel }) => (
@@ -108,14 +102,14 @@ const AddEditProduct = () => {
           const extras = allPhotos.filter((p) => p.imageType === IMAGE_TYPE.PHOTO);
 
           if (cover) {
-            const src = toImgSrc(cover.imageData, cover.contentType);
+            const src = toProductImgSrc(cover.imageData, cover.contentType);
             setExistingCover({ imageId: cover.imageId, imageUrl: src });
             setCoverPreview(src);
           }
           if (extras.length) {
             setPhotos(extras.map((p) => ({
               file: null,
-              preview: toImgSrc(p.imageData, p.contentType),
+              preview: toProductImgSrc(p.imageData, p.contentType),
               imageId: p.imageId,
             })));
           }
@@ -265,6 +259,10 @@ const AddEditProduct = () => {
           showToast("A photo upload failed: " + err.message, "error");
         }
       }
+
+      invalidateTags([CACHE_TAGS.PRODUCTS]);
+      if (id) invalidateKey(cacheKeyProductById(id));
+      if (savedId) invalidatePrefix(`GET:/api/v1/product-photo/product/${savedId}`);
 
       navigate("/admin/products");
     } catch (err) {

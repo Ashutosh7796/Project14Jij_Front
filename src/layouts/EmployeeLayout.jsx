@@ -5,9 +5,12 @@ import { FaWpforms } from "react-icons/fa";
 import logo from "../assets/Jioji_logo.png";
 import "../styles/EmployeeLayout.css";
 import { useAuth } from "../context/AuthContext";
+import { useIsMobileDashboard } from "../hooks/useMediaQuery";
 
 const EmployeeLayout = () => {
-  const [sidebarOpen, setSidebarOpen]   = useState(true);
+  const isMobile = useIsMobileDashboard(768);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const dropdownRef = useRef(null);
@@ -25,7 +28,16 @@ const EmployeeLayout = () => {
     navigate("/", { replace: true });
   };
 
-  const toggleSidebar  = () => setSidebarOpen((p) => !p);
+  useEffect(() => {
+    if (!isMobile) setMobileDrawerOpen(false);
+  }, [isMobile]);
+
+  const toggleSidebar = () => {
+    if (isMobile) setMobileDrawerOpen((p) => !p);
+    else setSidebarOpen((p) => !p);
+  };
+
+  const closeMobileDrawer = () => setMobileDrawerOpen(false);
   const toggleDropdown = () => setDropdownOpen((p) => !p);
 
   useEffect(() => {
@@ -53,17 +65,30 @@ const EmployeeLayout = () => {
 
   const isActive = (path) => location.pathname === path;
 
+  const sidebarClass = [
+    "emp-sidebar",
+    !isMobile && (sidebarOpen ? "emp-sidebar-open" : "emp-sidebar-closed"),
+    isMobile && "emp-sidebar-mobile",
+    isMobile && mobileDrawerOpen && "emp-mobile-open",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <div className="emp-layout-wrapper">
+      {isMobile && mobileDrawerOpen && (
+        <div className="emp-sidebar-backdrop" onClick={closeMobileDrawer} aria-hidden="true" />
+      )}
+
       {/* ── SIDEBAR ── */}
-      <aside className={`emp-sidebar ${sidebarOpen ? "emp-sidebar-open" : "emp-sidebar-closed"}`}>
+      <aside className={sidebarClass}>
         <div className="emp-sidebar-header">
           <div className="emp-logo-container">
             <img src={logo} alt="Jioji Green India" className="emp-logo" />
-            {sidebarOpen && <span className="emp-logo-text">Employee Panel</span>}
+            {(sidebarOpen || isMobile) && <span className="emp-logo-text">Employee Panel</span>}
           </div>
           <button className="emp-toggle-btn" onClick={toggleSidebar} aria-label="Toggle sidebar">
-            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+            {(isMobile ? mobileDrawerOpen : sidebarOpen) ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
 
@@ -73,26 +98,42 @@ const EmployeeLayout = () => {
               key={path}
               to={path}
               className={`emp-nav-item ${isActive(path) ? "emp-nav-active" : ""}`}
+              onClick={() => isMobile && closeMobileDrawer()}
             >
               <Icon size={20} />
-              {sidebarOpen && <span>{label}</span>}
+              {(sidebarOpen || isMobile) && <span>{label}</span>}
             </Link>
           ))}
         </nav>
 
         <div className="emp-sidebar-footer">
-          <button className="emp-logout-btn" onClick={handleLogout}>
+          <button
+            className="emp-logout-btn"
+            onClick={() => {
+              closeMobileDrawer();
+              handleLogout();
+            }}
+          >
             <LogOut size={20} />
-            {sidebarOpen && <span>Logout</span>}
+            {(sidebarOpen || isMobile) && <span>Logout</span>}
           </button>
         </div>
       </aside>
 
       {/* ── MAIN CONTENT ── */}
-      <div className={`emp-main-content ${sidebarOpen ? "emp-content-open" : "emp-content-closed"}`}>
+      <div
+        className={`emp-main-content ${
+          !isMobile ? (sidebarOpen ? "emp-content-open" : "emp-content-closed") : "emp-main-content--mobile"
+        }`}
+      >
         <header className="emp-top-header">
           <div className="emp-header-left">
-            <button className="emp-mobile-menu-btn" onClick={toggleSidebar} aria-label="Open menu">
+            <button
+              type="button"
+              className={`emp-mobile-menu-btn ${isMobile ? "emp-mobile-menu-btn--visible" : ""}`}
+              onClick={() => (isMobile ? setMobileDrawerOpen(true) : toggleSidebar())}
+              aria-label="Open menu"
+            >
               <Menu size={24} />
             </button>
             <h1>Employee Portal</h1>

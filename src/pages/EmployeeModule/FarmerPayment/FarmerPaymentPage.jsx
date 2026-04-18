@@ -39,7 +39,7 @@ export default function FarmerPaymentPage() {
   const [error, setError] = useState("");
 
   const farmerName = searchParams.get("farmerName") || "Farmer";
-  const fee = useMemo(() => "500", []);
+  const fee = useMemo(() => "350", []);
   const normalizedSurveyId = String(surveyId ?? "").trim();
 
   const handleProceedPayment = async () => {
@@ -79,7 +79,7 @@ export default function FarmerPaymentPage() {
             <span className="fee-label">Membership Fee:</span>
             <span className="fee-value">₹{fee}/-</span>
           </div>
-          <p className="fee-words">(In words: Rupees Five Hundred Only)</p>
+          <p className="fee-words">(In words: Rupees Three Hundred Fifty Only)</p>
         </section>
 
         <section className="payment-section">
